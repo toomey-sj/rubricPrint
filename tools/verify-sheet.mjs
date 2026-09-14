@@ -10,20 +10,24 @@
 
    That last one is what lets you trust the splitter before you own a scan.
 
-   Run:  node verify-sheet.mjs ../data/out/sheets.pdf [--run SRE1-2026-09-18] */
-import { readFileSync } from 'node:fs';
-import { fileURLToPath } from 'node:url';
-import { dirname, join, resolve } from 'node:path';
+   Run:  node verify-sheet.mjs ../data/out/sheets.pdf --roster ../data/class.json
+                                                      [--run SRE1-2026-09-18] */
+import { resolve } from 'node:path';
 import { openPdf, renderPage, readCode, parsePayload, CROP, DPI } from './lib/pdf.mjs';
+import { parseArgs } from './lib/cli.mjs';
+import { loadRoster } from './lib/roster.mjs';
 
-const HERE = dirname(fileURLToPath(import.meta.url));
-const args = process.argv.slice(2);
-const pdfPath = resolve(args.find((a) => !a.startsWith('--')) || '../data/out/sheets.pdf');
-const runFlag = args.indexOf('--run');
-const expectedRun = runFlag !== -1 ? args[runFlag + 1] : null;
+const USAGE = 'node verify-sheet.mjs <sheets.pdf> --roster <roster.json> [--run <runId>]';
 
-const roster = JSON.parse(readFileSync(join(HERE, '..', 'data', 'roster-sample.json'), 'utf8'));
-const byFolder = new Map(roster.students.map((s) => [s.folderId, s]));
+const args = parseArgs(process.argv.slice(2), {
+  flags: ['roster', 'run'],
+  usage: USAGE
+});
+const pdfPath = resolve(args.positionals[0] || '../data/out/sheets.pdf');
+const expectedRun = args.get('run');
+
+const { roster } = loadRoster(args.get('roster'));
+const byStudentId = new Map(roster.students.map((s) => [s.id, s]));
 
 let failures = 0;
 const check = (ok, label, detail = '') => {
@@ -71,20 +75,36 @@ for (const p of fronts) {
   const parsed = parsePayload(p.found.payload);
   if (!parsed.ok) { malformed++; continue; }
   if (expectedRun && parsed.runId !== expectedRun) { malformed++; continue; }
-  const student = byFolder.get(parsed.folderId);
+  const student = byStudentId.get(parsed.studentId);
   if (!student) { malformed++; continue; }
-  seen.set(parsed.folderId, (seen.get(parsed.folderId) || 0) + 1);
+  seen.set(parsed.studentId, (seen.get(parsed.studentId) || 0) + 1);
   p.student = student;
+  p.parsed = parsed;
 }
-check(malformed === 0, 'every code parses and names a roster student',
+check(malformed === 0, 'every code parses and names a roster student ID',
   malformed ? `${malformed} did not` : undefined);
 check(seen.size === roster.students.length,
   `all ${roster.students.length} students appear`,
   seen.size !== roster.students.length
-    ? roster.students.filter((s) => !seen.has(s.folderId))
+    ? roster.students.filter((s) => !seen.has(s.id))
         .map((s) => s.last).join(', ') + ' missing'
     : undefined);
 check([...seen.values()].every((n) => n === 1), 'no student appears twice');
+
+/* The same condition buildPackets treats as a warning is a failure here, and the
+   difference is which side of the paper you are on.
+
+   At split time a stale folder ID means the sheets were printed before the real
+   folders existed — the deferral working as designed, and the run goes ahead.
+   At verify time this PDF was generated from this roster minutes ago, so a
+   mismatch means you are about to spend thirty sheets of paper carrying IDs you
+   have already replaced, and nothing recovers from that except reprinting. */
+const stale = fronts.filter((p) => p.student && p.parsed &&
+  p.parsed.folderId !== p.student.folderId);
+check(stale.length === 0, 'every code carries the folder ID the roster holds now',
+  stale.length
+    ? `${stale.map((p) => p.student.last).join(', ')} — regenerate the sheets before printing`
+    : undefined);
 
 /* Position. The crop is a fraction of the page, so a code near its edge means the
    layout drifted and a real scan — with feeder skew on top — would start missing. */

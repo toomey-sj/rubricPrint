@@ -1,6 +1,10 @@
 node_modules/
 data/out/
 data/*.pdf
+
+# Per-run archives: each holds a report and a copy of the roster that produced
+# it, so this is real student data and it stays local.
+data/runs/
 .playwright-mcp/
 
 # Generated: the seeded design canvas, ~2.7MB with the editor baked in.

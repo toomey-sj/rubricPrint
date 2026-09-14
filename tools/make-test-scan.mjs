@@ -16,20 +16,40 @@
      missed       one student's code scribbled over, so it cannot decode
      duplicate    the first student's sheet fed twice
 
-   Run:  node make-test-scan.mjs [--break leading|missed|duplicate] */
+   Run:  node make-test-scan.mjs --roster ../data/class.json
+                                 [--sheets ../data/out/sheets.pdf]
+                                 [--break leading|missed|duplicate] */
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
 import { fileURLToPath } from 'node:url';
-import { dirname, join } from 'node:path';
+import { dirname, join, resolve } from 'node:path';
 import { PDFDocument, rgb } from 'pdf-lib';
+import { parseArgs, fail } from './lib/cli.mjs';
+import { loadRoster } from './lib/roster.mjs';
+
+const USAGE = 'node make-test-scan.mjs --roster <roster.json> [--sheets <sheets.pdf>] ' +
+  '[--break leading|missed|duplicate]';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const OUT = join(HERE, '..', 'data', 'out');
-const args = process.argv.slice(2);
-const breakIdx = args.indexOf('--break');
-const breakKind = breakIdx !== -1 ? args[breakIdx + 1] : null;
+const args = parseArgs(process.argv.slice(2), {
+  flags: ['roster', 'sheets', 'break'],
+  usage: USAGE
+});
+const breakKind = args.get('break');
 
-const roster = JSON.parse(await readFile(join(HERE, '..', 'data', 'roster-sample.json'), 'utf8'));
-const sheets = await PDFDocument.load(await readFile(join(OUT, 'sheets.pdf')));
+const { roster } = loadRoster(args.get('roster'));
+const sheetsPath = resolve(args.get('sheets', join(OUT, 'sheets.pdf')));
+const sheets = await PDFDocument.load(await readFile(sheetsPath));
+
+/* The sheets PDF and the roster have to be the same class. Without this, a
+   thirty-student roster against a five-student sheets.pdf fails deep inside
+   copyPages as a page-index error, which reads like a corrupt PDF rather than
+   the two-files-out-of-step problem it actually is. */
+if (sheets.getPageCount() !== roster.students.length * 2) {
+  fail(`${sheetsPath} has ${sheets.getPageCount()} pages, but this roster has ` +
+    `${roster.students.length} students — expected ${roster.students.length * 2}.\n` +
+    `The sheets PDF was printed from a different class. Reprint it from the same roster.`);
+}
 
 const PAGE = [612, 792];                       // Letter in PDF points
 const out = await PDFDocument.create();
@@ -92,7 +112,9 @@ for (const item of order) {
    than deleting the page, because the page is still there and still looks like a
    packet start to a human. */
 if (breakKind === 'missed') {
-  const target = out.getPage(6);                   // Dickinson's front
+  /* Six pages per student, so index 6 is always the second student's front —
+     whichever class this is run against. */
+  const target = out.getPage(6);
   const { width, height } = target.getSize();
   for (let i = 0; i < 60; i++) {
     target.drawLine({

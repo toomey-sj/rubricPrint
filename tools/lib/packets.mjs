@@ -8,14 +8,50 @@
    belongs to that student until the next code. Nothing else is inferred. */
 import { parsePayload } from './pdf.mjs';
 
+/* ── The roster's own integrity ──────────────────────────────────────────────
+   Separate from buildPackets so verify-sheet and the roster loader can run it
+   before any paper or any pixel is involved.
+
+   This check did not need to exist while the join was on folderId: a Drive
+   folder ID is 33 effectively random characters and two students could not
+   collide if you tried. A student ID is whatever the CSV's ID column held — and
+   when a CSV has no ID column at all, app.js:135 invents `String(1001 + i)`, so
+   two sections both number themselves from 1001. A collision routes one
+   student's entire packet into another student's folder, silently, which is the
+   one failure this project refuses to have. One Set is cheap insurance. */
+export function rosterIssues(roster) {
+  const issues = [];
+  const seen = new Set();
+  const clashing = new Set();
+  for (const student of roster.students) {
+    if (seen.has(student.id)) clashing.add(student.id);
+    seen.add(student.id);
+  }
+  for (const id of clashing) {
+    const involved = roster.students.filter((s) => s.id === id).map(name);
+    issues.push({ kind: 'roster_id_collision', severity: 'error', studentId: id,
+      students: involved,
+      message: `Student ID ${id} appears ${involved.length} times on this roster ` +
+        `(${involved.join('; ')}). Packets are matched by student ID, so two ` +
+        `students sharing one would file into each other's folders without ` +
+        `anything looking wrong. Give them distinct IDs and reprint.` });
+  }
+  return issues;
+}
+
 export function buildPackets(pageResults, roster, options = {}) {
   const expectedRun = options.runId || null;
-  const byFolder = new Map(roster.students.map((s) => [s.folderId, s]));
 
   const packets = [];
-  const issues = [];
+  const issues = rosterIssues(roster);
   const leading = [];
   let current = null;
+
+  /* The roster calls it `id`, the payload calls it `studentId`. Two names for one
+     field, because the roster is a person record and the payload is a 62-byte
+     budget. Left as they are rather than renamed on either side: both names are
+     printed on things that already exist. */
+  const byStudentId = new Map(roster.students.map((s) => [s.id, s]));
 
   for (const page of pageResults) {
     if (!page.payload) {
@@ -42,18 +78,31 @@ export function buildPackets(pageResults, roster, options = {}) {
       continue;
     }
 
-    const student = byFolder.get(parsed.folderId);
+    /* Matched on studentId, never on folderId. The folder ID in a code is
+       whatever existed the morning the sheet printed; the student ID is stable
+       for as long as they are in the class. That difference is the whole reason
+       Drive can be deferred — a term of sheets printed on placeholder folder IDs
+       keeps splitting after the real ones arrive. See folder_changed below. */
+    const student = byStudentId.get(parsed.studentId);
     if (!student) {
       issues.push({ kind: 'unknown_student', severity: 'error', page: page.n,
-        folderId: parsed.folderId,
-        message: `Page ${page.n} names a folder that is not on this roster.` });
+        studentId: parsed.studentId, folderId: parsed.folderId,
+        message: `Page ${page.n} names student ID ${parsed.studentId}, which is not ` +
+          `on this roster. Most often this is a sheet from another section that ` +
+          `got into the stack.` });
       if (current) current.pages.push(page.n); else leading.push(page.n);
       continue;
     }
 
     current = {
-      student, folderId: parsed.folderId, runId: parsed.runId,
-      studentId: parsed.studentId, startPage: page.n, pages: [page.n], flags: []
+      student, studentId: parsed.studentId, runId: parsed.runId,
+      /* Two folder IDs on purpose. `folderId` is where this packet GOES — the
+         roster's current value, which is what filing will need. `printedFolderId`
+         is what the paper actually said, kept only as evidence. Collapsing them
+         would mean filing into a folder that may no longer exist, or worse, into
+         a real folder from an arrangement that has since changed. */
+      folderId: student.folderId, printedFolderId: parsed.folderId,
+      startPage: page.n, pages: [page.n], flags: []
     };
     packets.push(current);
   }
@@ -72,7 +121,7 @@ export function buildPackets(pageResults, roster, options = {}) {
     if (packet.pages.length % 2 !== 0) {
       packet.flags.push('odd_page_count');
       issues.push({ kind: 'odd_page_count', severity: 'warning',
-        folderId: packet.folderId, student: name(packet.student),
+        studentId: packet.studentId, student: name(packet.student),
         message: `${name(packet.student)} has ${packet.pages.length} pages. A duplex scan ` +
           `gives two per sheet, so an odd count means a page was dropped or a code missed.` });
     }
@@ -86,7 +135,7 @@ export function buildPackets(pageResults, roster, options = {}) {
       if (packet.pages.length >= median * 2 && packet.pages.length > median + 2) {
         packet.flags.push('suspicious_length');
         issues.push({ kind: 'suspicious_length', severity: 'warning',
-          folderId: packet.folderId, student: name(packet.student),
+          studentId: packet.studentId, student: name(packet.student),
           message: `${name(packet.student)} has ${packet.pages.length} pages against a ` +
             `typical ${median}. A packet about twice the usual length has usually ` +
             `swallowed the next student, whose code went unread.` });
@@ -94,28 +143,60 @@ export function buildPackets(pageResults, roster, options = {}) {
     }
   }
 
-  /* Same student twice. Never merged by default: the "duplicate" may be a misdecode
-     of a neighbour's code, and merging would interleave two students invisibly. */
+  /* Same student twice. Never merged: the usual cause is a sheet that went
+     through the feeder twice, or a reprint handed out alongside the original, and
+     merging would interleave two runs of pages into one file with no way back.
+     Two numbered parts are recoverable by hand; an interleave is not.
+
+     (Not, as an earlier comment here claimed, because the second code might be a
+     misread of a neighbour's. QR is Reed-Solomon: a damaged symbol fails to
+     decode, it does not decode to a different valid payload. Worth correcting
+     now the key is a short number, because that argument would otherwise sound
+     newly plausible and it is still wrong.) */
   const counts = new Map();
   for (const packet of packets) {
-    counts.set(packet.folderId, (counts.get(packet.folderId) || 0) + 1);
+    counts.set(packet.studentId, (counts.get(packet.studentId) || 0) + 1);
   }
-  for (const [folderId, n] of counts) {
+  for (const [studentId, n] of counts) {
     if (n < 2) continue;
-    const involved = packets.filter((p) => p.folderId === folderId);
+    const involved = packets.filter((p) => p.studentId === studentId);
     involved.forEach((p, i) => { p.part = i + 1; p.partsTotal = n; });
-    issues.push({ kind: 'duplicate_code', severity: 'error', folderId,
+    issues.push({ kind: 'duplicate_code', severity: 'error', studentId,
       student: name(involved[0].student),
       pages: involved.map((p) => p.startPage),
       message: `${name(involved[0].student)} appears ${n} times, starting at pages ` +
         `${involved.map((p) => p.startPage).join(' and ')}. Written as separate parts ` +
-        `rather than merged, because one of them may be a misread of someone else's code.` });
+        `rather than merged, because a merge would interleave two runs of pages ` +
+        `with no way to tell afterwards where one ended.` });
+  }
+
+  /* ── The sheet is older than the roster ──────────────────────────────────────
+     A warning, emphatically not an error, because this IS the deferral working.
+     The reason the join moved to studentId is so a term of sheets printed on
+     placeholder folder IDs keeps splitting once the real Drive IDs arrive.
+     Failing here would re-impose exactly the weld the join removed — the split
+     would start refusing on the day the migration succeeded.
+
+     But nothing structural happens invisibly (decisions.md §6), so it is said
+     out loud. Once, naming everyone, following leading_pages: after a re-key
+     this fires on every packet of every run for the rest of the term, and thirty
+     identical warnings would make summary.warnings a number nobody reads. The
+     per-packet flag is what puts it beside the right rows in the report. */
+  const moved = packets.filter((p) => p.printedFolderId !== p.folderId);
+  if (moved.length) {
+    for (const packet of moved) packet.flags.push('folder_changed');
+    issues.push({ kind: 'folder_changed', severity: 'warning',
+      students: moved.map((p) => name(p.student)),
+      message: `${moved.length} sheet(s) carry a folder ID the roster has since ` +
+        `changed — ${moved.map((p) => `${name(p.student)} …${tail(p.printedFolderId)} ` +
+        `→ …${tail(p.folderId)}`).join('; ')}. Filed to the folder the roster holds ` +
+        `now. Expected when the sheets were printed before the real folders existed.` });
   }
 
   for (const student of roster.students) {
-    if (counts.has(student.folderId)) continue;
+    if (counts.has(student.id)) continue;
     issues.push({ kind: 'missing_student', severity: 'error',
-      folderId: student.folderId, student: name(student),
+      studentId: student.id, student: name(student),
       message: `No routing code for ${name(student)} was found. Their work is most ` +
         `likely inside whichever packet came back longest.` });
   }
@@ -139,8 +220,38 @@ export function name(student) {
   return `${student.last}, ${student.first}`;
 }
 
-export function fileNameFor(packet) {
-  const base = `${packet.student.last}-${packet.student.first}`.replace(/[^\w-]/g, '');
+/* Last six characters of an ID. A full Drive folder ID inside a sentence is 33
+   characters of noise nobody reads; the tail is enough to tell two apart, and it
+   is what the app's roster panel already shows on screen (app.js:169). */
+const tail = (id) => String(id).slice(-6);
+
+const slug = (value) => String(value).replace(/[^\w-]/g, '');
+
+/* ── Where a packet is written ───────────────────────────────────────────────
+   packets/<Last-First-id>/<runId>.pdf — a mirrored tree, so hand-filing a class
+   is one drag per student instead of thirty out of one flat directory.
+
+   Two functions rather than one joined path because the caller has to mkdir the
+   directory before writing the file, and would otherwise have to take its own
+   answer apart again with dirname().
+
+   The student ID is always on the directory, not only when it is needed. A
+   namesake pair, or a name written in a script the ASCII-only strip reduces to
+   nothing, would otherwise share one directory and overwrite each other — and a
+   rule that only appends on collision moves a student between directories the
+   year a namesake joins the class.
+
+   The folder ID is in neither half. It used to be the filename's tail, which
+   welded whatever ID existed at print time onto disk permanently — the same weld
+   this change just removed from the join. */
+export function dirFor(packet) {
+  return slug(`${packet.student.last}-${packet.student.first}-${packet.studentId}`);
+}
+
+export function fileFor(packet) {
+  /* runId is free text typed into the app, so it gets the same strip a name
+     does. `part` survives the move: a duplicate is still two files, still
+     numbered, still never merged. */
   const part = packet.part ? `__part${packet.part}` : '';
-  return `${base}${part}__${packet.folderId}.pdf`;
+  return `${slug(packet.runId)}${part}.pdf`;
 }

@@ -5,7 +5,9 @@
   "type": "module",
   "description": "Desk-side tooling for Rubric Print. The app/ folder stays dependency-free; everything that needs npm lives here.",
   "scripts": {
-    "test": "node qr-selftest.mjs",
+    "test": "npm run test:qr && npm run test:packets",
+    "test:qr": "node qr-selftest.mjs --roster ../data/roster-sample.json",
+    "test:packets": "node packets-test.mjs --roster ../data/roster-sample.json",
     "split": "node split.mjs"
   },
   "dependencies": {

@@ -8,19 +8,24 @@
    would come back null or garbled. Getting 54 bytes back on five payloads across
    several mask choices is not something a broken encoder does by accident.
 
-   Run:  node qr-selftest.mjs          (from tools/) */
+   Run:  node qr-selftest.mjs --roster ../data/roster-sample.json   (from tools/) */
 import { createRequire } from 'node:module';
-import { readFileSync } from 'node:fs';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
 import jsQR from 'jsqr';
 import { createCanvas, loadImage } from '@napi-rs/canvas';
+import { parseArgs } from './lib/cli.mjs';
+import { loadRoster } from './lib/roster.mjs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
 const QR = require(join(HERE, '..', 'app', 'qr.js'));
 
-const roster = JSON.parse(readFileSync(join(HERE, '..', 'data', 'roster-sample.json'), 'utf8'));
+const args = parseArgs(process.argv.slice(2), {
+  flags: ['roster'],
+  usage: 'node qr-selftest.mjs --roster <roster.json>'
+});
+const { roster } = loadRoster(args.get('roster'));
 const RUN_ID = 'SRE1-2026-09-18';
 
 let failures = 0;
@@ -36,7 +41,15 @@ const decode = (result, scale = 8) => {
 console.log(`\nQR encoder self-test\n${'-'.repeat(60)}`);
 console.log(`${roster.students.length} students · run ${RUN_ID}\n`);
 
-/* ── The round trip ──────────────────────────────────────────────────────────── */
+/* ── The round trip ──────────────────────────────────────────────────────────
+   The budget is what is asserted here, not the version. A real Drive folder ID
+   is 33 characters and lands on v4 — but this now runs against whatever roster
+   it is given, and a class printed on *placeholder* folder IDs (the whole point
+   of deferring Drive) has a shorter payload and legitimately picks v3. Asserting
+   v4 here would fail on a correct roster. What must never happen is a payload
+   over the 62-byte budget, or a step up past v4 to a denser symbol with a worse
+   scan margin at the same 2cm — see decisions.md §4. A synthetic Drive-length
+   payload pins v4 exactly, below. */
 for (const s of roster.students) {
   const payload = [s.folderId, RUN_ID, s.id].join('|');
   const result = QR.encode(payload);
@@ -44,17 +57,29 @@ for (const s of roster.students) {
 
   console.log(`${s.last}, ${s.first} — ${payload.length} bytes, v${result.version}, ` +
     `${result.size}×${result.size}, mask ${result.mask}`);
-  check(result.version === 4, 'version 4', `got v${result.version}`);
-  check(result.size === 33, '33×33 modules', `got ${result.size}`);
+  check(payload.length <= 62, 'within the 62-byte budget', `${payload.length} bytes`);
+  check(result.version <= 4, 'version 4 or below', `got v${result.version}`);
   check(got !== null, 'jsQR finds a code');
   check(got?.data === payload, 'round-trips byte for byte',
     got && got.data !== payload ? `got "${got.data}"` : '');
   console.log('');
 }
 
-/* ── Decode margin at realistic scan resolutions ─────────────────────────────── */
-console.log(`Decode margin\n${'-'.repeat(60)}`);
-const marginPayload = [roster.students[0].folderId, RUN_ID, roster.students[0].id].join('|');
+/* A real Drive folder ID is 33 characters, so the symbol a real class prints is
+   fixed regardless of which roster this test was handed. */
+console.log(`A Drive-length payload\n${'-'.repeat(60)}`);
+const drivePayload = ['1tmJcPxdvSeqe6EBHSIx4zCRRM9kt0EL3', RUN_ID, '1001'].join('|');
+const driveResult = QR.encode(drivePayload);
+check(drivePayload.length === 54, '54 bytes', `got ${drivePayload.length}`);
+check(driveResult.version === 4, 'version 4', `got v${driveResult.version}`);
+check(driveResult.size === 33, '33×33 modules', `got ${driveResult.size}`);
+check(decode(driveResult)?.data === drivePayload, 'round-trips byte for byte');
+
+/* ── Decode margin at realistic scan resolutions ─────────────────────────────
+   Measured on the Drive-length payload rather than the roster's, so the margin
+   this reports is the one a real class actually prints. */
+console.log(`\nDecode margin\n${'-'.repeat(60)}`);
+const marginPayload = drivePayload;
 const marginResult = QR.encode(marginPayload);
 for (const [scale, note] of [[3, 'below any real scan'], [4, ''],
                              [5, '≈ 200 DPI scan'], [7, '≈ 300 DPI scan']]) {
