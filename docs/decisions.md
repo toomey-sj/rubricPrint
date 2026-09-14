@@ -177,8 +177,14 @@ from 2/5 to 5/5 on real paper. Full detail and the measurement table in
 
 ## Open questions
 
-- **Photocopy generation loss is untested.** Every page in the chain so far is
-  first-generation. Binarization should help; it has not been proven.
+- **Handling wear is untested.** A sheet that has spent a day folded in a backpack, with
+  a crease through the code. EC level M recovers about 15% of a symbol, which should cover
+  a fold line, but it has not been tried.
+
+  (An earlier draft listed *photocopy generation loss* here. It does not apply: every sheet
+  carries a different name and code, so a class set cannot be run off a master on the
+  copier the way an ordinary worksheet is. Each sheet is printed individually and is
+  therefore first-generation — which is precisely what the field test already scanned.)
 - **A full class is untested.** Five students, not thirty. Nothing suggests a scaling
   problem — the splitter is linear in pages — but no feeder has been loaded deep.
 - **Nobody has confirmed by eye** that the handwriting inside a student's PDF is the

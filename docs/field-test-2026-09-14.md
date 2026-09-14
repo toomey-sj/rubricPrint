@@ -82,9 +82,12 @@ the blank page is in their folder proving the scanner saw it and it was empty.
 
 ## Still unproven
 
-- **Photocopy generation loss.** Both scans were of freshly printed sheets, not of
-  photocopies. Every page in the chain so far is first-generation. The binarization should
-  help here, but it has not been tested.
+- **Handling wear.** Both scans were of sheets that went straight from the printer to the
+  scanner. Untested: a sheet creased in a backpack, with a fold through the code.
+
+  Photocopy generation loss was originally listed here and is a mistake. Personalized
+  sheets cannot be mass-copied from a master, so every sheet is first-generation in normal
+  use — which is what these scans already were.
 - **A full class.** Five students, not thirty. Nothing suggests a scaling problem — the
   splitter is linear in pages — but the stack has never been deep enough to jam a feeder.
 - **Whose handwriting is whose.** The codes, page counts and filenames were verified
