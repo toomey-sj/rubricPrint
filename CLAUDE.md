@@ -107,6 +107,18 @@ paper is spent. `make-test-scan.mjs --break leading|missed|duplicate` rehearses 
   request is refused as cross-origin. Files arrive through `FileReader` after the user picks
   or drops them. The `?demo` fixture uses `fetch` and therefore only runs over http.
 
+## Roster sources
+
+Three, and they converge on one shape — `{ class, students: [{ id, last, first, folderId }] }`.
+A roster CSV, a roster JSON the app saved, and **a Planbook year backup**, which holds
+several classes and so asks which one. Planbook detection runs before the roster-shape
+check because a Planbook document also has a top-level `students` array; get that order
+wrong and it fails with a true, useless message. Reasoning: `docs/decisions.md` §18.
+
+Planbook students carry no portfolio folder, so theirs is `placeholder-<studentId>`. That
+works only because packets join on `studentId` (§15). Do not make folder IDs load-bearing
+again.
+
 ## Not built yet
 
 Drive filing, folder matching and creation, markdown save and reload, splitting one Doc that

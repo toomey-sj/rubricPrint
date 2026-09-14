@@ -1,0 +1,918 @@
+{
+  "schemaVersion": 3,
+  "docId": "9pyw4za3i2",
+  "year": "2026-2027",
+  "rev": 41,
+  "deviceId": "dns4xkg59p",
+  "updatedAt": "2026-09-14T11:20:00.000Z",
+  "teacher": {
+    "name": "W. Toomey",
+    "school": "St. John’s High School",
+    "email": "",
+    "adminEmail": "",
+    "defaultCc": true
+  },
+  "classes": [
+    {
+      "id": "c_pz5gh95p21",
+      "name": "Period 1 — English 10",
+      "archived": false,
+      "terms": [
+        {
+          "id": "tm_lwsto4v36i",
+          "label": "Quarter 1",
+          "start": "2026-08-26",
+          "end": "2026-10-30"
+        },
+        {
+          "id": "tm_bk9zmyn7y9",
+          "label": "Quarter 2",
+          "start": "2026-11-02",
+          "end": "2027-01-15"
+        }
+      ],
+      "categories": [
+        {
+          "id": "k_d6cgjt46i5",
+          "name": "Tests",
+          "weight": 40
+        },
+        {
+          "id": "k_exc88uuogp",
+          "name": "Essays",
+          "weight": 40
+        },
+        {
+          "id": "k_47kpciagwn",
+          "name": "Homework",
+          "weight": 20
+        }
+      ],
+      "letterScale": null,
+      "roster": [
+        "s_zp93op6hib",
+        "s_h2xs6qnj1h",
+        "s_pudmcj2u1s",
+        "s_3y82x6ke43",
+        "s_1hh6bj08ic",
+        "s_c6st4bxtwk",
+        "s_cle45paxsx",
+        "s_sn0rrlyvr0",
+        "s_yq60eq91xx",
+        "s_r72g3e9jzs",
+        "s_ivc5pl0mpl",
+        "s_oaiipkhnpk",
+        "s_olwt9ziwj6",
+        "s_zmro9p7km9",
+        "s_e6iyovdbv5",
+        "s_9301ur7ykr",
+        "s_ws1zo1n6nt",
+        "s_5kcv9oe6tl",
+        "s_ddsbhex0u4",
+        "s_o18yhvzhzj",
+        "s_w6bswmdawx",
+        "s_4flv2ibk3p",
+        "s_w8j2ld5dmr",
+        "s_udxwj86y8u"
+      ]
+    },
+    {
+      "id": "c_g11ycmvjm7",
+      "name": "Period 3 — English 10",
+      "archived": false,
+      "terms": [
+        {
+          "id": "tm_8pgve92jr7",
+          "label": "Quarter 1",
+          "start": "2026-08-26",
+          "end": "2026-10-30"
+        },
+        {
+          "id": "tm_ox1bm7rshb",
+          "label": "Quarter 2",
+          "start": "2026-11-02",
+          "end": "2027-01-15"
+        }
+      ],
+      "categories": [
+        {
+          "id": "k_ic1z4aw1an",
+          "name": "Tests",
+          "weight": 40
+        },
+        {
+          "id": "k_dzxb5017rf",
+          "name": "Essays",
+          "weight": 40
+        },
+        {
+          "id": "k_2xbt493b6h",
+          "name": "Homework",
+          "weight": 20
+        }
+      ],
+      "letterScale": null,
+      "roster": [
+        "s_h73cuy5re9",
+        "s_9r0pzgkfo2",
+        "s_2jcrejd42c",
+        "s_yoidxvob46",
+        "s_bke8jslteq",
+        "s_kofl8y25nr",
+        "s_48culcn3mx",
+        "s_h0vnxsrt52",
+        "s_xh0g94ulyb",
+        "s_1tcr9hbg8b",
+        "s_fgg3el5238",
+        "s_ap2pxokchs",
+        "s_b37u7217q2",
+        "s_tq68rxq6u2",
+        "s_lp041marpo",
+        "s_quqtsf1juo",
+        "s_0oi8hc0rje",
+        "s_8s79kv7zbk"
+      ]
+    },
+    {
+      "id": "c_5m578gzv46",
+      "name": "Period 6 — English 9",
+      "archived": false,
+      "terms": [
+        {
+          "id": "tm_yvxyqh9vip",
+          "label": "Quarter 1",
+          "start": "2026-08-26",
+          "end": "2026-10-30"
+        },
+        {
+          "id": "tm_er8mmlo1lr",
+          "label": "Quarter 2",
+          "start": "2026-11-02",
+          "end": "2027-01-15"
+        }
+      ],
+      "categories": [
+        {
+          "id": "k_5ug9vi74pr",
+          "name": "Tests",
+          "weight": 40
+        },
+        {
+          "id": "k_5j0n9sbgfq",
+          "name": "Essays",
+          "weight": 40
+        },
+        {
+          "id": "k_edfv3o1gsc",
+          "name": "Homework",
+          "weight": 20
+        }
+      ],
+      "letterScale": null,
+      "roster": [
+        "s_m7yo0vvuyb",
+        "s_fzpfaw2u56",
+        "s_zmnvv7ciir",
+        "s_a06oamav9n",
+        "s_xr1gvlgagz",
+        "s_4v9sixakln",
+        "s_gtqqpjniuw",
+        "s_s0ot3sdcw2",
+        "s_vqkab8kerb",
+        "s_daewb4sfbu",
+        "s_8pe3ww989l",
+        "s_rvzgxru5tt"
+      ]
+    },
+    {
+      "id": "c_ggxl3sikjw",
+      "name": "Period 2 — English 10 (dropped)",
+      "archived": true,
+      "terms": [
+        {
+          "id": "tm_3suca0kxes",
+          "label": "Quarter 1",
+          "start": "2026-08-26",
+          "end": "2026-10-30"
+        },
+        {
+          "id": "tm_sys5wut1x4",
+          "label": "Quarter 2",
+          "start": "2026-11-02",
+          "end": "2027-01-15"
+        }
+      ],
+      "categories": [
+        {
+          "id": "k_twsez0cevm",
+          "name": "Tests",
+          "weight": 40
+        },
+        {
+          "id": "k_8u2epmyda3",
+          "name": "Essays",
+          "weight": 40
+        },
+        {
+          "id": "k_is1viwtutu",
+          "name": "Homework",
+          "weight": 20
+        }
+      ],
+      "letterScale": null,
+      "roster": [
+        "s_o389zj5tm2",
+        "s_o0kfjgxbvu",
+        "s_7gc8fr5rhm",
+        "s_zctvxe1e6b",
+        "s_zj6qplnue8",
+        "s_4zsns6jlek"
+      ]
+    }
+  ],
+  "letterScale": [
+    {
+      "letter": "A",
+      "min": 93
+    },
+    {
+      "letter": "B",
+      "min": 83
+    },
+    {
+      "letter": "F",
+      "min": 0
+    }
+  ],
+  "students": [
+    {
+      "id": "s_zp93op6hib",
+      "first": "Chinua",
+      "last": "Achebe",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_h2xs6qnj1h",
+      "first": "James",
+      "last": "Baldwin",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_pudmcj2u1s",
+      "first": "Sandra",
+      "last": "Cisneros",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_3y82x6ke43",
+      "first": "Rita",
+      "last": "Dove",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_1hh6bj08ic",
+      "first": "George",
+      "last": "Eliot",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_c6st4bxtwk",
+      "first": "Lawrence",
+      "last": "Ferlinghetti",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_cle45paxsx",
+      "first": "Nikki",
+      "last": "Giovanni",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_sn0rrlyvr0",
+      "first": "Langston",
+      "last": "Hughes",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_yq60eq91xx",
+      "first": "Henrik",
+      "last": "Ibsen",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_r72g3e9jzs",
+      "first": "Shirley",
+      "last": "Jackson",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_ivc5pl0mpl",
+      "first": "John",
+      "last": "Keats",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_oaiipkhnpk",
+      "first": "Audre",
+      "last": "Lorde",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_olwt9ziwj6",
+      "first": "Toni",
+      "last": "Morrison",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_zmro9p7km9",
+      "first": "Pablo",
+      "last": "Neruda",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_e6iyovdbv5",
+      "first": "Mary",
+      "last": "Oliver",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_9301ur7ykr",
+      "first": "Sylvia",
+      "last": "Plath",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_ws1zo1n6nt",
+      "first": "Horacio",
+      "last": "Quiroga",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_5kcv9oe6tl",
+      "first": "Rainer",
+      "last": "Rilke",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_ddsbhex0u4",
+      "first": "Anne",
+      "last": "Sexton",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_o18yhvzhzj",
+      "first": "Rabindranath",
+      "last": "Tagore",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_w6bswmdawx",
+      "first": "Akinari",
+      "last": "Ueda",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_4flv2ibk3p",
+      "first": "Paul",
+      "last": "Verlaine",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_w8j2ld5dmr",
+      "first": "Derek",
+      "last": "Walcott",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_udxwj86y8u",
+      "first": "Zhimo",
+      "last": "Xu",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_h73cuy5re9",
+      "first": "William",
+      "last": "Yeats",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_9r0pzgkfo2",
+      "first": "Louis",
+      "last": "Zukofsky",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_2jcrejd42c",
+      "first": "Sherman",
+      "last": "Alexie",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_yoidxvob46",
+      "first": "Gwendolyn",
+      "last": "Brooks",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_bke8jslteq",
+      "first": "Lucille",
+      "last": "Clifton",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_kofl8y25nr",
+      "first": "James",
+      "last": "Dickey",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_48culcn3mx",
+      "first": "Louise",
+      "last": "Erdrich",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_h0vnxsrt52",
+      "first": "Robert",
+      "last": "Frost",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_xh0g94ulyb",
+      "first": "Louise",
+      "last": "Glück",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_1tcr9hbg8b",
+      "first": "Seamus",
+      "last": "Heaney",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_fgg3el5238",
+      "first": "Kazuo",
+      "last": "Ishiguro",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_ap2pxokchs",
+      "first": "Ha",
+      "last": "Jin",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_b37u7217q2",
+      "first": "Jamaica",
+      "last": "Kincaid",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_tq68rxq6u2",
+      "first": "Denise",
+      "last": "Levertov",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_lp041marpo",
+      "first": "Scott",
+      "last": "Momaday",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_quqtsf1juo",
+      "first": "Vladimir",
+      "last": "Nabokov",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_0oi8hc0rje",
+      "first": "Michael",
+      "last": "Ondaatje",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_8s79kv7zbk",
+      "first": "Octavio",
+      "last": "Paz",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_m7yo0vvuyb",
+      "first": "Claudia",
+      "last": "Rankine",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_fzpfaw2u56",
+      "first": "Zadie",
+      "last": "Smith",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_zmnvv7ciir",
+      "first": "Natasha",
+      "last": "Trethewey",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_a06oamav9n",
+      "first": "John",
+      "last": "Updike",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_xr1gvlgagz",
+      "first": "Ocean",
+      "last": "Vuong",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_4v9sixakln",
+      "first": "Richard",
+      "last": "Wright",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_gtqqpjniuw",
+      "first": "Karen",
+      "last": "Yamashita",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_s0ot3sdcw2",
+      "first": "Sa",
+      "last": "Zitkala",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_vqkab8kerb",
+      "first": "Chimamanda",
+      "last": "Adichie",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_daewb4sfbu",
+      "first": "Elizabeth",
+      "last": "Bishop",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_8pe3ww989l",
+      "first": "Raymond",
+      "last": "Carver",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_rvzgxru5tt",
+      "first": "Edwidge",
+      "last": "Danticat",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_o389zj5tm2",
+      "first": "Ralph",
+      "last": "Ellison",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_o0kfjgxbvu",
+      "first": "Carolyn",
+      "last": "Forché",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_7gc8fr5rhm",
+      "first": "Ross",
+      "last": "Gay",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_zctvxe1e6b",
+      "first": "Robert",
+      "last": "Hayden",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_zj6qplnue8",
+      "first": "Lucy",
+      "last": "Ives",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    },
+    {
+      "id": "s_4zsns6jlek",
+      "first": "James",
+      "last": "Johnson",
+      "nickname": "",
+      "gradYear": "2028",
+      "email": "",
+      "phone": "",
+      "phone2": "",
+      "guardians": []
+    }
+  ],
+  "assignments": [],
+  "scores": {},
+  "attendance": [],
+  "log": [],
+  "openPasses": [],
+  "passes": [],
+  "events": [],
+  "templates": [],
+  "signals": {}
+}

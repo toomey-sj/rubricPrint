@@ -58,6 +58,13 @@ because that is the app’s own format and it round-trips without guessing at co
 again. The app reads either: a CSV is a fresh export, a JSON is a roster saved
 earlier.
 
+**A Planbook year backup is the third.** Drop the JSON that Planbook’s backup button
+writes and the app asks which class, then loads that roster. Folder IDs come out as
+`placeholder-<studentId>`, which splits correctly today and reconciles the day real
+Drive IDs arrive — see [decisions.md §15 and §18](docs/decisions.md). Still a file
+read through `FileReader`; the app does not talk to Planbook and still touches no
+network.
+
 The splitter reads JSON. So after importing a real class, click **Save as JSON** and
 keep that file next to the scan — that saved roster is the handoff between the two
 halves.

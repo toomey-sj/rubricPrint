@@ -8,7 +8,7 @@
      48px page padding + (720px content − 94px code column) = 674. */
   var QR_BOX = { left: 674, top: 48, size: 94 };
 
-  var state = { roster: null, front: '', back: '' };
+  var state = { roster: null, planbook: null, front: '', back: '' };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -31,39 +31,52 @@
       } catch (err) {
         return fail(err.message);
       }
-      var missing = parsed.students.filter(function (s) { return !s.folderId; });
-      if (missing.length) {
-        return fail(missing.length + ' student(s) have no portfolio folder, so their ' +
-          'sheets would print without a routing code. Add the column, or remove them.');
+
+      /* A Planbook year document holds several classes, so there is nothing to
+         commit until one is chosen. Everything after this point is the same for
+         all three sources, because the picker hands back the same shape. */
+      if (parsed.planbook) {
+        state.planbook = parsed.planbook;
+        renderClassPicker();
+        return;
       }
-      /* The splitter matches a scanned code back to a student on the student ID,
-         so a blank or repeated one is a sheet that can never be filed — and a
-         repeat is the worse of the two, because it files one student's work into
-         another's folder with nothing looking wrong. Caught here rather than at
-         the splitter, which is a term of paper too late. A CSV import always has
-         IDs (invented above when the column is absent); a hand-edited JSON need
-         not. */
-      var idless = parsed.students.filter(function (s) { return !s.id; });
-      if (idless.length) {
-        return fail(idless.length + ' student(s) have no student ID. The routing code ' +
-          'carries it, and it is what the splitter matches on.');
-      }
-      var seenIds = {};
-      var repeated = [];
-      parsed.students.forEach(function (s) {
-        if (seenIds[s.id] && repeated.indexOf(s.id) === -1) repeated.push(s.id);
-        seenIds[s.id] = true;
-      });
-      if (repeated.length) {
-        return fail('Student ID ' + repeated.join(', ') + ' appears more than once. ' +
-          'Two students sharing an ID would file into each other’s folders.');
-      }
-      state.roster = parsed;
-      renderRoster();
-      render();
+      commitRoster(parsed);
     };
     reader.onerror = function () { fail('Could not read that file.'); };
     reader.readAsText(file);
+  }
+
+  function commitRoster(parsed) {
+    var missing = parsed.students.filter(function (s) { return !s.folderId; });
+    if (missing.length) {
+      return fail(missing.length + ' student(s) have no portfolio folder, so their ' +
+        'sheets would print without a routing code. Add the column, or remove them.');
+    }
+    /* The splitter matches a scanned code back to a student on the student ID,
+       so a blank or repeated one is a sheet that can never be filed — and a
+       repeat is the worse of the two, because it files one student's work into
+       another's folder with nothing looking wrong. Caught here rather than at
+       the splitter, which is a term of paper too late. A CSV import always has
+       IDs (invented above when the column is absent); a hand-edited JSON need
+       not. */
+    var idless = parsed.students.filter(function (s) { return !s.id; });
+    if (idless.length) {
+      return fail(idless.length + ' student(s) have no student ID. The routing code ' +
+        'carries it, and it is what the splitter matches on.');
+    }
+    var seenIds = {};
+    var repeated = [];
+    parsed.students.forEach(function (s) {
+      if (seenIds[s.id] && repeated.indexOf(s.id) === -1) repeated.push(s.id);
+      seenIds[s.id] = true;
+    });
+    if (repeated.length) {
+      return fail('Student ID ' + repeated.join(', ') + ' appears more than once. ' +
+        'Two students sharing an ID would file into each other’s folders.');
+    }
+    state.roster = parsed;
+    renderRoster();
+    render();
   }
 
   function parseRosterJson(text) {
@@ -76,8 +89,130 @@
     if (!parsed || !Array.isArray(parsed.students) || !parsed.students.length) {
       throw new Error('That JSON has no "students" array.');
     }
+    /* Checked BEFORE the roster shape, because a Planbook year document also has
+       a top-level `students` array and would otherwise parse as a roster — then
+       fail with "60 students have no portfolio folder", which is true and tells
+       you nothing about what actually happened. */
+    if (looksLikePlanbook(parsed)) return { planbook: parsed };
     parsed.source = 'JSON — a roster saved earlier';
     return parsed;
+  }
+
+  /* ── Planbook year documents ───────────────────────────────────────────────
+     Planbook keeps one JSON document per school year, with its classes nested
+     inside it and one flat `students` array the classes point into by id. A
+     backup file from it is therefore a whole year — several classes — where the
+     other two sources are exactly one class.
+
+     Read through the same FileReader as everything else. This app still does not
+     touch the network, and it never opens Planbook's IndexedDB: a backup file is
+     a snapshot the teacher chose to hand over, which is the same bargain as the
+     paste (decisions.md §7).
+
+     THE JOIN IS WHAT MAKES THIS WORK AT ALL. A Planbook student has an id and no
+     portfolio folder, and until the splitter matched on folderId that was fatal.
+     It matches on studentId now, so the folder can be a placeholder and the split
+     still lands — see decisions.md §15. */
+  function looksLikePlanbook(doc) {
+    return typeof doc.schemaVersion === 'number' &&
+      typeof doc.year === 'string' &&
+      Array.isArray(doc.classes);
+  }
+
+  function planbookClasses(doc) {
+    return doc.classes.filter(function (c) { return c && !c.archived; });
+  }
+
+  /* Planbook's own placeholder shape, so the sheets say plainly where they came
+     from and a real folder ID replacing one later is visible as a change rather
+     than a mystery. */
+  function placeholderFolder(studentId) {
+    return 'placeholder-' + studentId;
+  }
+
+  function rosterFromPlanbook(doc, classId) {
+    var klass = null;
+    doc.classes.forEach(function (c) { if (c.id === classId) klass = c; });
+    if (!klass) throw new Error('That class is no longer in this document.');
+
+    var byId = {};
+    doc.students.forEach(function (s) { byId[s.id] = s; });
+
+    /* A roster id with no student behind it is a broken document, not a student
+       to skip quietly — Planbook's own screens resolve stale ids to something
+       that exists, but a sheet printed for nobody is a sheet nobody hands in. */
+    var dangling = [];
+    var students = [];
+    (klass.roster || []).forEach(function (id) {
+      var s = byId[id];
+      if (!s) { dangling.push(id); return; }
+      students.push({
+        id: s.id,
+        last: (s.last || '').trim(),
+        first: (s.first || '').trim(),
+        folderId: placeholderFolder(s.id)
+      });
+    });
+    if (dangling.length) {
+      throw new Error(klass.name + ' lists ' + dangling.length + ' student(s) who are ' +
+        'not in this document (' + dangling.join(', ') + '). Re-export the backup.');
+    }
+    if (!students.length) throw new Error(klass.name + ' has nobody on its roster.');
+
+    return {
+      class: klass.name,
+      students: students,
+      source: 'Planbook ' + doc.year + ' · ' + klass.name +
+        ' — folder IDs are placeholders'
+    };
+  }
+
+  function renderClassPicker() {
+    var doc = state.planbook;
+    var classes = planbookClasses(doc);
+    var archived = doc.classes.length - classes.length;
+
+    var rows = classes.map(function (c) {
+      var n = (c.roster || []).length;
+      return '<div class="row">' +
+        '<div class="row-main">' +
+          '<div class="row-name">' + escapeText(c.name) + '</div>' +
+          '<div class="row-sub">' + n + ' student' + (n === 1 ? '' : 's') + '</div>' +
+        '</div>' +
+        (n
+          ? '<button class="class-action-btn" data-class="' + escapeText(c.id) + '">Use this class</button>'
+          : '<span class="badge badge-bad">✕ Empty</span>') +
+      '</div>';
+    }).join('');
+
+    $('rosterList').innerHTML =
+      '<div class="row" style="background:#f8f9fb;">' +
+        '<div class="row-main"><div class="row-sub">' +
+          'Planbook year ' + escapeText(doc.year) + ' · ' + classes.length + ' class' +
+          (classes.length === 1 ? '' : 'es') +
+          (archived ? ' · ' + archived + ' archived, not shown' : '') +
+          '. Pick the one you are printing for.' +
+        '</div></div>' +
+      '</div>' + rows;
+
+    /* Bound per render rather than delegated, matching how the roster panel's own
+       Save button is wired below. */
+    var buttons = $('rosterList').querySelectorAll('[data-class]');
+    for (var i = 0; i < buttons.length; i++) {
+      buttons[i].addEventListener('click', function (e) {
+        var parsed;
+        try {
+          parsed = rosterFromPlanbook(state.planbook, e.currentTarget.getAttribute('data-class'));
+        } catch (err) {
+          return fail(err.message);
+        }
+        commitRoster(parsed);
+      });
+    }
+
+    $('status').className = 'save-indicator saving';
+    $('status').textContent = '↻ Choose a class';
+    render();
   }
 
   /* Quote-aware, because the column that matters most is usually called
@@ -547,11 +682,26 @@
      any paper is spent. It uses fetch(), so it only works when the page is served
      over http; opened normally from file:// this branch never runs. */
   if (/[?&]demo/.test(location.search) && location.protocol !== 'file:') {
+    /* `?demo&planbook` takes the roster from a Planbook year backup instead of the
+       sample CSV, and `&class=N` picks which of that year's active classes. Same
+       purpose as the CSV branch: it lets verify-sheet.mjs prove that sheets driven
+       off a Planbook document carry codes the splitter can actually read. */
+    var wantsPlanbook = /[?&]planbook/.test(location.search);
+    var classIndex = Number((/[?&]class=(\d+)/.exec(location.search) || [])[1] || 0);
+    var rosterSource = wantsPlanbook
+      ? fetch('../data/planbook-sample-backup.json').then(function (r) { return r.json(); })
+      : fetch('../data/roster-sample.csv').then(function (r) { return r.text(); });
+
     Promise.all([
-      fetch('../data/roster-sample.csv').then(function (r) { return r.text(); }),
+      rosterSource,
       fetch('../data/assignment-sample.json').then(function (r) { return r.json(); })
     ]).then(function (both) {
-      state.roster = parseRosterCsv(both[0]);
+      if (wantsPlanbook) {
+        state.planbook = both[0];
+        state.roster = rosterFromPlanbook(both[0], planbookClasses(both[0])[classIndex].id);
+      } else {
+        state.roster = parseRosterCsv(both[0]);
+      }
       state.front = both[1].front;
       state.back = both[1].back;
       $('pasteFront').innerHTML = state.front;

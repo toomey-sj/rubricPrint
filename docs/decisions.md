@@ -280,6 +280,42 @@ SHA-256 and the absolute path, which is enough to prove which bytes a report des
 Keeping the original until the term's grading is done is a desk rule — a re-split needs it,
 and it is the only way back from a wrong boundary.
 
+## 18 · A Planbook year backup is a third roster source
+
+Added 14 Sep 2026. The app reads a Planbook year document — the JSON that app's own
+backup button writes — alongside a roster CSV and a saved roster JSON. It holds several
+classes, so it is the one source that asks a question: pick the class, then the roster
+loads. Archived classes are not offered.
+
+**This only became possible because of §15.** A Planbook student has an id and no
+portfolio folder. While the splitter joined on `folderId` that was fatal — there was
+nothing to match on. Joining on `studentId` means the folder can be `placeholder-<id>`
+and the split still lands in the right place, with `folder_changed` naming it the day
+real Drive IDs arrive. The feature is a consequence of the phase-1 change, not a
+coincidence.
+
+Detection runs **before** the roster-shape check, because a Planbook document also has a
+top-level `students` array. Without that ordering it parses as a roster and fails with
+"60 students have no portfolio folder" — true, and no help at all in working out what
+happened.
+
+**Still a file, still `FileReader`, still no network.** The app does not open Planbook's
+IndexedDB and could not: a `file://` page has no access to another origin's storage, and
+Planbook is served over https. A backup file is a snapshot the teacher chose to hand
+over, which is the same bargain as the paste (§7) — and it keeps §1 intact.
+
+A dangling roster id — a class listing a student the document does not contain — is
+refused rather than skipped. Planbook's own screens resolve a stale id to something that
+exists, which is right for a screen; a sheet printed for nobody is a sheet nobody hands
+in.
+
+**What this is really testing.** Whether the rubric printer is a second app or a Planbook
+module. Planbook already owns years, classes, rosters and students; this adds a QR
+encoder and a prompt. Reading its backup file is the cheapest way to find out whether the
+data model fits before anything is committed to. It does fit: 18 students out of a
+Planbook class print, verify, scan and split with no errors, and the payload is 53 of 62
+bytes.
+
 ---
 
 ## Deliberately not built
