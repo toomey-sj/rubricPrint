@@ -82,12 +82,14 @@ the blank page is in their folder proving the scanner saw it and it was empty.
 
 ## Still unproven
 
-- **Handling wear.** Both scans were of sheets that went straight from the printer to the
-  scanner. Untested: a sheet creased in a backpack, with a fold through the code.
+- **Handling wear is a near-non-issue.** Sheets live one class period: handed out at the
+  start, collected at the end, so they do not go home and do not get folded into a
+  backpack. Take-home essays are seen digitally, so no printed sheet travels at all.
 
-  Photocopy generation loss was originally listed here and is a mistake. Personalized
-  sheets cannot be mass-copied from a master, so every sheet is first-generation in normal
-  use — which is what these scans already were.
+  And a lost or damaged sheet reprints cleanly. The code is *derived* from
+  `folderId|runId|studentId` rather than stored, so a reprint produces a byte-identical
+  symbol and the replacement is interchangeable with the original. Losing a sheet costs
+  one page, not a recovery procedure.
 - **A full class.** Five students, not thirty. Nothing suggests a scaling problem — the
   splitter is linear in pages — but the stack has never been deep enough to jam a feeder.
 - **Whose handwriting is whose.** The codes, page counts and filenames were verified
