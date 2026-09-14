@@ -1,6 +1,6 @@
 # Roadmap
 
-**Status: phase 1, not started.** Last updated 14 Sep 2026.
+**Status: phase 1 complete, phase 2 next.** Last updated 14 Sep 2026.
 
 Shareable view of this plan, with the reasoning attached:
 <https://claude.ai/code/artifact/02464f20-4a2d-4ce4-bc4d-b7e5f92d99fd>
@@ -51,24 +51,45 @@ Today every tool hardcodes `data/roster-sample.json`. A real class would split a
 Shakespeare, Dickinson, Whitman, Frost and Angelou — silently, because the codes on the
 paper would match nothing. No tester can start until this is gone.
 
-- [ ] `--roster <path>` on every tool. Five files read the sample from a fixed path:
-      `split.mjs:34`, `verify-sheet.mjs:25`, `make-test-scan.mjs:31`, `packets-test.mjs:11`,
-      `qr-selftest.mjs:23`. Fail with a named error when the flag is absent rather than
-      falling back to the sample.
-- [ ] Join packets on `studentId`, not `folderId`. `packets.mjs:12` builds its lookup as
-      `byFolder`, which welds the printed code to whatever folder ID existed at print time.
-      The payload already carries all three fields. **This is what makes deferring Drive
-      safe** — a term of sheets printed with placeholder IDs keeps splitting after real
-      Drive IDs arrive.
-- [ ] Write packets into a mirrored tree: `packets/<Last-First>/<runId>.pdf` instead of one
-      flat directory, so hand-filing is one drag rather than thirty.
-- [ ] Archive every run: `report.json` into `data/runs/<runId>/` with the roster used and the
-      scan's hash. **Keep the scan** until the term's grading is done — a re-split needs it,
-      and it is the only way back from a wrong boundary.
+- [x] `--roster <path>` on every tool, required, no fallback. Shared `lib/cli.mjs` (one
+      parser — the two hand-rolled ones would have mis-taken the roster path as the
+      positional) and `lib/roster.mjs` (load, validate, refuse). Exit 2 and stderr for a
+      wrong command, leaving exit 1 to mean the paper had problems. [decisions.md §16](decisions.md).
+- [x] Join packets on `studentId`, not `folderId`. A packet now carries both: `folderId` is
+      the roster's current value — where it goes — and `printedFolderId` is what the paper
+      said. A stale ID is a **warning** when splitting and a **failure** when verifying.
+      [decisions.md §15](decisions.md).
+- [x] Write packets into a mirrored tree: `packets/<Last-First-id>/<runId>.pdf`. The student
+      ID is always appended rather than only on collision, so a namesake cannot overwrite
+      anyone and the directory name never moves between runs. The folder ID left the
+      filename entirely.
+- [x] Archive every run to `data/runs/<runId>/` — report, plus a **copy** of the roster and
+      the scan's SHA-256. Written on the refusal path too, which is the run most likely to
+      be needed later. The scan is not copied in; **keep it** until the term's grading is
+      done. [decisions.md §17](decisions.md).
 
-**Done when:** a thirty-student roster prints; `verify-sheet` passes on the printed PDF;
-`make-test-scan` → `split` reconstructs all thirty into per-student directories; both test
-suites still pass with zero failures.
+Three things the work turned up that were not in the plan:
+
+- **`--force-code` would have become a dead end.** It built its payload with the literal
+  string `'forced'` as the student ID, so under the new join every forced page became
+  `unknown_student` — and the splitter's own on-screen instructions would have been telling
+  a teacher to use a flag that no longer worked, at exactly the moment they were stuck. It
+  now names a student ID, resolved against the roster at parse time.
+- **The new key can collide; the old one could not.** `roster_id_collision` is checked in
+  the app on import, in the roster loader, and in `buildPackets`.
+- **`qr-selftest` asserted `version === 4`**, which fails on a roster of placeholder folder
+  IDs — the exact case this phase exists to make safe. It now asserts the 62-byte budget,
+  and pins v4 against a synthetic Drive-length payload separately.
+
+**Done — 14 Sep 2026.** Verified against a synthetic thirty-student class: 60-page sheets
+PDF passes `verify-sheet`; a 180-page scan splits into 30 per-student directories; all
+three break modes refuse and write nothing; a scribbled-out code recovers via
+`--force-code`; and sheets printed on placeholder folder IDs split cleanly against a roster
+holding the real ones, reporting `folder_changed` once as a warning. Both suites pass.
+
+**Still owed:** the same run against a *real* thirty-student roster and a real print. The
+synthetic sheets were generated straight from `app/qr.js` at the sheet's own geometry, which
+proves the tooling but not the print dialog.
 
 **Out of scope:** anything touching Google. Any change to the sheet layout, the QR geometry,
 or the crop.

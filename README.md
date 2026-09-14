@@ -78,7 +78,20 @@ halves.
 ```
 cd tools
 npm install
-node split.mjs ../data/out/scan.pdf --run SRE1-2026-09-18 --out ../data/out/packets
+node split.mjs ../data/out/scan.pdf --roster ../data/class.json \
+  --run SRE1-2026-09-18 --out ../data/out/packets
+```
+
+`--roster` is the JSON you saved after importing the class, and it is **required** —
+there is no default. Falling back to a sample would split a real class against five
+fictional poets silently, and "no packets found" reads like a scanner fault rather
+than the wrong file.
+
+Packets land in a mirrored tree, one directory per student, so filing a class by hand
+is one drag each rather than thirty out of a flat folder:
+
+```
+packets/Shakespeare-William-1001/SRE1-2026-09-18.pdf
 ```
 
 The report matters more than the PDFs. It names every packet, its page range, and
@@ -86,23 +99,32 @@ anything suspicious. **When a student is missing, nothing is written** — a
 half-correct split that gets filed is worse than no split, because the mis-filing is
 invisible.
 
+Every run is also archived to `data/runs/<runId>/` with its report and a copy of the
+roster that produced it, plus the scan's SHA-256. **Keep the scan** until the term's
+grading is done: a re-split needs it, and it is the only way back from a wrong
+boundary.
+
 If a code will not decode, the splitter dumps the top-right crop of each candidate
 page to `undecoded/`. The sheet prints its run ID in readable type under the square,
-so you read it with your eyes and hand it back:
+so you read the name with your eyes and hand it back by student ID:
 
 ```
-node split.mjs scan.pdf --run SRE1-2026-09-18 --force-code 7=<that student's folder id>
+node split.mjs scan.pdf --roster ../data/class.json --run SRE1-2026-09-18 --force-code 7=1002
 ```
 
 ## Checking it without paper
 
 ```
 cd tools
-node qr-selftest.mjs      # encode all five payloads, decode them back with jsQR
-node packets-test.mjs     # the boundary rule and every way it goes wrong
-node make-test-scan.mjs   # synthesize a duplex scan from a printed sheets.pdf
-node verify-sheet.mjs ../data/out/sheets.pdf --run SRE1-2026-09-18
+npm test                  # both suites, against data/roster-sample.json
+node qr-selftest.mjs  --roster ../data/roster-sample.json   # encode every payload, decode it back with jsQR
+node packets-test.mjs --roster ../data/roster-sample.json   # the boundary rule and every way it goes wrong
+node make-test-scan.mjs --roster ../data/class.json         # synthesize a duplex scan from a printed sheets.pdf
+node verify-sheet.mjs ../data/out/sheets.pdf --roster ../data/class.json --run SRE1-2026-09-18
 ```
+
+Exit **1** means the run found problems in the paper. Exit **2** means the command was
+wrong, and the message goes to stderr.
 
 `verify-sheet.mjs` is the one that earns its keep: it reads the *printed* PDF through
 the same crop the splitter uses, so it proves the codes are readable and correctly
@@ -114,7 +136,10 @@ rehearse each failure.
 ## The QR code
 
 Version 4, error-correction level M, byte mode, 33 × 33 modules, printed at 2 cm.
-Payload is `folderId|runId|studentId` — 54 bytes into 62 of capacity.
+Payload is `folderId|runId|studentId` — 54 bytes into 62 of capacity. The splitter
+matches a scanned code back to a student on the **student ID**; the folder ID is
+carried along as a destination, not as the key. That is what lets a term of sheets
+print on placeholder folder IDs and still split once the real ones exist.
 
 Byte mode is forced: a Drive folder ID is mixed case with `-` and `_`, which
 alphanumeric mode cannot encode. The version is capped at 4 on purpose — a longer

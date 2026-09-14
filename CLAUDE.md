@@ -35,6 +35,7 @@ Changing any of these changes the other side too, and needs its reasoning record
 | **One code per sheet, front only.** A second code starts a phantom packet and cuts every student in half | `app/app.js` `backSheet()`, asserted in `preflight()` |
 | **No `background-color` anywhere on a `.sheet`.** Browsers omit fills unless the viewer ticks "Background graphics", which is off by default. Every line is a border or a text colour | `app/index.html`, linted in `preflight()` |
 | **A code starts a packet**, and every page after it belongs to that student until the next code. Nothing else is inferred | `tools/lib/packets.mjs` `buildPackets()` |
+| **Packets join on `studentId`, never `folderId`.** A packet's `folderId` is the roster's current value — where it goes; `printedFolderId` is what the paper said. Joining on the folder would weld every sheet to the ID that existed at print time | `tools/lib/packets.mjs`, `docs/decisions.md` §15 |
 | **62-byte payload budget.** `folderId\|runId\|studentId`, version 4, EC level M, byte mode, capped on purpose so a long payload fails loudly rather than densifying | `app/qr.js`, counter in `updatePayloadSize()` |
 
 The header band is fixed height and `.sheet-head-qr` cannot shrink, because a long name
@@ -74,15 +75,18 @@ must truncate rather than push the code out of its rectangle.
 
 ## Checking it without paper
 
+**Every tool requires `--roster <path>`** and there is no fallback to the sample — see
+`docs/decisions.md` §16. Exit 1 means the paper had problems; exit 2 means the command was
+wrong, and goes to stderr.
+
 ```
 cd tools
-node packets-test.mjs      # the boundary rule and every way it goes wrong
-node qr-selftest.mjs       # encode all payloads, decode them back with jsQR
-node verify-sheet.mjs ../data/out/sheets.pdf --run SRE1-2026-09-18
-node make-test-scan.mjs    # synthesize a duplex scan from a printed sheets.pdf
+npm test                   # both suites, against data/roster-sample.json
+node packets-test.mjs --roster ../data/roster-sample.json   # the boundary rule, and every way it goes wrong
+node qr-selftest.mjs  --roster ../data/roster-sample.json   # encode all payloads, decode them back with jsQR
+node verify-sheet.mjs ../data/out/sheets.pdf --roster ../data/class.json --run SRE1-2026-09-18
+node make-test-scan.mjs --roster ../data/class.json         # synthesize a duplex scan from a printed sheets.pdf
 ```
-
-Run **both** test scripts — `npm test` currently only runs `qr-selftest.mjs`.
 
 `verify-sheet.mjs` is the one that earns its keep: it reads the printed PDF through the same
 crop the splitter uses, proving the codes are readable and correctly placed before a sheet of
@@ -96,8 +100,9 @@ paper is spent. `make-test-scan.mjs --break leading|missed|duplicate` rehearses 
   [docs/field-test-2026-09-14.md](docs/field-test-2026-09-14.md).
 - **Google Docs wraps clipboard HTML** in `<b id="docs-internal-guid-…" style="font-weight:normal">`.
   Keep that `<b>` naively and the entire assignment prints bold.
-- **The splitter and the test tools currently hardcode `data/roster-sample.json`.** A real
-  class would split against five fictional poets, silently. Fixing this is phase 1.
+- **Never reintroduce a default roster path.** Every tool takes `--roster` and fails without
+  it. A fallback to the sample means a real class splits against five fictional poets,
+  silently, and "no packets found" reads like a scanner fault rather than the wrong file.
 - **`app/` cannot `fetch()` a sibling file** from `file://` — the origin is opaque and the
   request is refused as cross-origin. Files arrive through `FileReader` after the user picks
   or drops them. The `?demo` fixture uses `fetch` and therefore only runs over http.

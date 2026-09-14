@@ -197,6 +197,89 @@ This is the app having an opinion about content, which §9 otherwise forbids —
 as narrowly as possible: the box's *state* is normalised, its presence and position are not.
 Per §6 the app says on screen when it has unticked something, rather than doing it silently.
 
+## 15 · Packets are matched on the student ID
+
+Changed 14 Sep 2026, at the start of phase 1. `buildPackets` joined a scanned code to a
+roster student on `folderId`. That welded every printed sheet to whatever Drive folder ID
+existed the morning it printed: the day the real folders were created, a term of sheets
+would stop matching anything and the split would refuse the lot.
+
+The payload already carries all three fields (§4), so the fix costs nothing on paper.
+**The join is `roster.id` ↔ the payload's `studentId`.** The folder ID is cargo.
+
+That is what makes deferring Drive safe rather than merely postponed. A whole term can
+print on placeholder folder IDs and keep splitting after the real ones arrive.
+
+**A packet carries two folder IDs, and the plain name is the destination.**
+`packet.folderId` is the roster's *current* value — where this work goes. `printedFolderId`
+is what the paper actually said, kept as evidence and used for nothing else.
+
+The asymmetry is deliberate, and it is chosen around which mistake writes a file. Every
+consumer of `folderId` is asking *where does this go*; only a human debugging asks what the
+paper said. Had the bare name kept the printed value, a student whose portfolio folder was
+legitimately re-pointed mid-year would file **successfully, into a real, valid, wrong
+folder** — the invisible mis-filing §6 exists to prevent. The mistake in the other
+direction is a wrong answer to a forensic question: annoying, self-correcting, writes
+nothing. `report.json` is `schemaVersion: 2` for this reason; a v1 reader taking `folderId`
+at face value would file into a placeholder.
+
+**A stale folder ID is a warning when splitting and a failure when verifying.** Same
+condition, opposite verdicts, and the difference is which side of the paper you are on. At
+split time it means the sheets were printed before the folders existed — the deferral
+working, and refusing there would re-impose the exact weld this removed. At verify time the
+PDF was generated from this roster minutes ago, so it means you are about to spend thirty
+sheets on IDs you have already replaced, and nothing recovers from that but reprinting.
+Per §6 the split says so out loud: one warning naming everyone, plus a flag on each packet
+so it shows beside the right rows.
+
+**The new key can collide; the old one could not.** A Drive folder ID is 33 effectively
+random characters. A student ID is whatever the CSV's ID column held — and when a CSV has
+no ID column, the app invents `String(1001 + i)`, so two sections both number themselves
+from 1001. A collision routes one student's entire packet into another's folder with
+nothing looking wrong anywhere. Hence `roster_id_collision`, checked in the app on import,
+in the roster loader before any pixel is rendered, and again in `buildPackets`.
+
+Consequences elsewhere:
+
+- **`--force-code` names a student ID**, not a folder ID. It is also the number a teacher
+  can read off the roster panel, rather than 33 characters to copy correctly under time
+  pressure, and it is resolved against the roster at parse time so a typo fails by name.
+- **The folder ID left the output filename.** Packets are
+  `packets/<Last-First-id>/<runId>.pdf`. Baking a placeholder into a filename on disk,
+  permanently, is the same weld in a different place.
+
+## 16 · The roster is named, never defaulted
+
+Every tool used to read `data/roster-sample.json` from a fixed path. A real class would
+have split against five fictional poets — silently, because the codes on the paper match
+nothing on the roster actually loaded, and "no packets found" reads like a scanner problem
+rather than the wrong file.
+
+`--roster <path>` is **required on all five tools**, the two test scripts included, and
+there is deliberately no fallback. The npm scripts name the sample explicitly, so the
+fixture is visible in the command rather than buried in a source file.
+
+The tools now distinguish two exit codes. **1 means the run found problems in the paper** —
+a successful run reporting a real-world fault. **2 means the command was wrong** and goes
+to stderr, so anything wrapping the splitter can tell "this class needs attention" from
+"you typed it wrong".
+
+## 17 · Every run is archived, but the scan is not copied
+
+`data/runs/<runId>/` holds the run's `report.json`, `report.txt`, and a **copy** of the
+roster it used — copied, not referenced, because next term's edit to the same file would
+otherwise rewrite this run's history.
+
+Written on the refusal path too. That is precisely the run somebody needs to reconstruct
+later, and the old behaviour left it beside the packets to be clobbered by the re-run that
+fixed it.
+
+**The scan itself is not copied in.** A duplex class scan is hundreds of megabytes, and
+duplicating it every run would cost more than it buys. What the archive keeps is the
+SHA-256 and the absolute path, which is enough to prove which bytes a report describes.
+Keeping the original until the term's grading is done is a desk rule — a re-split needs it,
+and it is the only way back from a wrong boundary.
+
 ---
 
 ## Deliberately not built
@@ -204,7 +287,7 @@ Per §6 the app says on screen when it has unticked something, rather than doing
 | | note |
 |---|---|
 | Drive filing | The PoC stops at per-student PDFs. This is the obvious next piece. |
-| Folder matching, creation, moving | Drawn and disabled in the mockups. Folder IDs come from the CSV for now. |
+| Folder matching, creation, moving | Drawn and disabled in the mockups. Folder IDs come from the CSV for now, and §15 is what makes that safe to live with: placeholder IDs can print for a term and still split once the real ones arrive. |
 | Markdown save and reload of assignments | **Decided, not built.** Format sketched in the mockup notes: frontmatter for the header values, `---` between prompts, the back named in frontmatter rather than detected by heading text. Makes boundary detection deterministic after the first pass, and an assignment file carries no student data so it is freely shareable. |
 | Splitting one Doc that holds several prompts | Deferred entirely by pasting front and back separately. The sample Doc holds five prompts for one essay. |
 | Multi-class printing | The assignment is scoped **above** the class: paste once, print several periods. Not yet reflected in the app. |
