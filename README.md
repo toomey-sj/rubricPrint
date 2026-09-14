@@ -8,6 +8,18 @@ splitter cuts that PDF back into per-student PDFs by the codes.
 This is the proof of concept. Filing into Google Drive is not built yet, and
 nothing here touches the network.
 
+## Where the reasoning lives
+
+- [docs/decisions.md](docs/decisions.md) — why the architecture is what it is, what was
+  considered and rejected, what is deliberately not built, and what is still open.
+  **Read this before changing anything structural.**
+- [docs/field-test-2026-09-14.md](docs/field-test-2026-09-14.md) — what the first run on
+  real paper measured.
+- [Design mockups](https://claude.ai/code/artifact/b03cc902-6fb2-4210-a565-e6a2ca34f809) —
+  eleven screens, with the reasoning attached as notes on the canvas.
+- Style authority: [edu-style-guide](https://github.com/wildbil2me/edu-style-guide). Cite
+  rule IDs in comments and commit messages when a rule drove the change (CODE-09).
+
 ## Two halves, two sets of rules
 
 **`app/`** is the print surface. Open `app/index.html` by double-clicking it — no
