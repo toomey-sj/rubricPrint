@@ -1,6 +1,6 @@
 # Roadmap
 
-**Status: phase 1 complete, phase 2 next.** Last updated 14 Sep 2026.
+**Status: phase 1 complete. Phase 2 specified, not started.** Last updated 14 Sep 2026.
 
 Shareable view of this plan, with the reasoning attached:
 <https://claude.ai/code/artifact/02464f20-4a2d-4ce4-bc4d-b7e5f92d99fd>
@@ -28,9 +28,9 @@ loop runs for a term on placeholder IDs, filed by hand.
 
 | | needed by | note |
 |---|---|---|
-| Where the house style ends | phase 4 | Full fidelity puts a tester's fonts and colours on paper. Structure-yes / appearance-no is the likely middle. |
-| My Drive or a shared drive | phase 5 | Shared drives change ownership — files belong to the drive, better for continuity when a teacher leaves. Decide before the root folder is created. |
-| Partial filing or all-or-nothing | phase 5 | Splitting refuses everything on any error. Filing is per-student independent, so a loud skip is coherent. Opposite rules, so make it deliberate. |
+| Where the house style ends | phase 5 | Full fidelity puts a tester's fonts and colours on paper. Structure-yes / appearance-no is the likely middle. |
+| My Drive or a shared drive | phase 6 | Shared drives change ownership — files belong to the drive, better for continuity when a teacher leaves. Decide before the root folder is created. |
+| Partial filing or all-or-nothing | phase 6 | Splitting refuses everything on any error. Filing is per-student independent, so a loud skip is coherent. Opposite rules, so make it deliberate. |
 
 ## Settled
 
@@ -96,7 +96,62 @@ or the crop.
 
 ---
 
-## Phase 2 · Prove it at class scale
+## Phase 2 · The app holds the class
+
+**Goal:** set the classes up once in September and never re-enter a roster to print a
+rubric.
+
+Today every print starts by importing a roster. That pays a per-print cost for a per-term
+event, on the morning when there is least time to pay it. Reasoning and the rules this has
+to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
+
+- [ ] **The year document.** One per school year: a flat `students` array, classes holding
+      `roster: [studentId]`. Planbook's shape, so moving a student is list membership and a
+      future merge of the two apps is a merge rather than a translation. `schemaVersion` and
+      a migration ladder **from the first commit** — retrofitting one onto data already on
+      someone's disk is the expensive version of this job.
+- [ ] **Its own store, not the prefs whitelist.** `getPref`/`setPref` exist to stop a
+      document being stashed in `localStorage`; this is a document, so it gets its own
+      accessor and its own reasoning. **A store that is not storing says so, loudly and
+      permanently** — private windows and `file://` both refuse, and a teacher who believes
+      a class is saved and is wrong finds out next September.
+- [ ] **Create a class; populate it from a CSV.** Name and student ID. Folder ID optional —
+      store `null`, never a placeholder, and synthesise `placeholder-<studentId>` at print
+      time so the three-field payload holds. A stored placeholder is indistinguishable from
+      a real ID a year later.
+- [ ] **Generate IDs only where the field is blank, and only on confirmation.** Unique
+      across the year, readable (`2026-0042`), never regenerated. Hand back the imported
+      roster with the ID column filled in — that file is both the recovery record and what
+      makes the next import clean.
+- [ ] **Create classes from a Planbook backup, fully populated.** Keeps Planbook's `s_…`
+      ids so a later re-import reconciles instead of duplicating everyone.
+- [ ] **Add/drop.** Move a student between classes, or drop them from one. A drop leaves the
+      student in the document, because a sheet already printed still has to resolve.
+- [ ] **Export the year, and say when you last did.** Once the app owns the roster, losing
+      the store loses the year. Offer the file, record that it was offered, keep saying so —
+      but do not hard-block, because a gate satisfied by dismissing a dialog reads as noise.
+- [ ] **Keep drop-in print, under §22's rule.** A roster that brings its own identity may
+      print and be forgotten; one whose identity the app minted is kept. The class list
+      becomes the front door and drop-in the smaller path; a loaded drop-in roster can be
+      promoted with one button, and its tab says it is unsaved.
+
+**Done when:** a class created in September prints a rubric in November with no file
+touched in between; a student moved between two classes prints on the right sheet; a class
+built from a CSV with no IDs cannot lose them silently; and the whole year survives a
+browser restart and comes back from its own export file.
+
+**Out of scope:** anything touching Google. Syncing back to Planbook. A year picker — the
+`year` field goes in now because retrofitting it is a migration, but there is no second year
+to switch to yet.
+
+**The risk this accepts** is drift: two apps can now hold a roster for the same children.
+Named rather than solved, and the Planbook-id rule above is what keeps a re-import from
+making it worse. If it bites, that is the argument for serving this half and reading
+Planbook's live document instead — §1's territory, not a feature request.
+
+---
+
+## Phase 3 · Prove it at class scale
 
 **Goal:** find out what breaks between five students and a hundred and fifty.
 
@@ -122,7 +177,7 @@ by what turns up.
 
 ---
 
-## Phase 3 · Survive another teacher
+## Phase 4 · Survive another teacher
 
 **Goal:** a tester who didn't build it completes a full cycle without you on the phone.
 
@@ -147,7 +202,7 @@ testers.
 
 ---
 
-## Phase 4 · Input fidelity
+## Phase 5 · Input fidelity
 
 **Goal:** rubrics print looking like the Doc they came from — tables, merged cells,
 checkboxes and all.
@@ -182,7 +237,7 @@ the pre-flight, and prints legibly in greyscale.
 
 ---
 
-## Phase 5 · Filing into Drive
+## Phase 6 · Filing into Drive
 
 **Goal:** packets land in portfolio folders without a human dragging anything.
 
@@ -227,9 +282,18 @@ tool. That signal beats any argument made now about when filing should land.
 
 ## Sequencing
 
-Phases 1–3 are sequential; each produces what the next one needs. Phase 4 is specified by the
-rubric corpus phase 3 collects. Phase 5 is specified by whether phase 2 shows the split is
-trustworthy enough to build on.
+**Phase 2 was inserted 14 Sep 2026 and everything after it moved down one.** It was not in
+the original plan; it arrived from the decision that the app should hold the class list
+(§20). What was phase 2 is now phase 3, and so on to phase 6.
 
-Estimates are shape, not schedule. Phase 5 is the only one with a dependency outside the
+Phase 3 is the odd one: it needs a real class, real paper and a teaching day, so it is
+gated on the calendar rather than on work. It can run alongside phase 2 rather than after
+it, and phase 1's still-owed item — a real thirty-student print — is the first half of it.
+
+Phase 4 is where phase 2 pays off: a tester who sets their classes up once is a tester who
+can be handed the thing. Phase 5 is specified by the rubric corpus phase 4 collects, and
+also settles the assignment-file format left open under *Deliberately not built*. Phase 6
+is specified by whether phase 3 shows the split is trustworthy enough to build on.
+
+Estimates are shape, not schedule. Phase 6 is the only one with a dependency outside the
 project.

@@ -120,10 +120,25 @@ works only because packets join on `studentId` (§15). Do not make folder IDs lo
 again.
 
 A Planbook year fills the header **class bar**, and switching tabs keeps the paste — that
-is multi-class printing (§19). Only two ids and a year label persist, through a whitelist
-in `getPref`/`setPref` that refuses undeclared keys. **Never persist a roster.** `file://`
-has no dependable storage, and the file is already the store: re-reading it is what stops
-the roster going stale against Planbook.
+is multi-class printing (§19). Today only two ids and a year label persist, through a
+whitelist in `getPref`/`setPref` that refuses undeclared keys.
+
+**That is changing.** Phase 2 makes the app hold the class list — §8's "never authored in
+the app" is reversed by §20. Three rules govern it, and they are cheap now and expensive
+later:
+
+- **A student ID is permanent once printed** (§21). It is in the QR and on paper. Never
+  regenerate. Pre-assigned beats generated; generation is confirmed, year-unique, and
+  readable (`2026-0042`) because `--force-code` makes a human type it.
+- **Folder IDs are optional — store `null`, never a placeholder** (§20). Synthesise
+  `placeholder-<studentId>` at print time so the three-field payload holds. A stored
+  placeholder is indistinguishable from a real ID a year on.
+- **Identity brought in may be forgotten; identity the app minted is kept** (§22). That is
+  what stops a drop-in print generating IDs and losing them with the tab.
+
+The roster document gets its **own** store, not `PREF_DEFAULTS` — that whitelist exists to
+keep documents out of `localStorage`, and weakening it to admit one is how it stops
+working.
 
 ## Not built yet
 

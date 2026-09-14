@@ -119,9 +119,10 @@ is visible rather than silently printing the wrong name on the wrong sheet. The 
 quote-aware because the column that matters is usually called `Last, First` and holds
 values like `Shakespeare, William` — both carry a comma.
 
-**The roster is always imported, never authored in the app.** The door left open is on the
-folder side: creating missing portfolio folders, and moving them when a student changes
-class.
+~~**The roster is always imported, never authored in the app.**~~ **Reversed 14 Sep 2026 —
+see §20.** Classes are created in the app and rosters persist; import is how a roster gets
+*in*, not the only place it can live. The rest of this section stands: CSV in, JSON out,
+columns matched and shown.
 
 ## 9 · The rubric has no fixed shape
 
@@ -339,8 +340,9 @@ undeclared key — lifted from Planbook's `src/prefs.js` along with its reason: 
 cause of an undeclared key is someone reaching for `localStorage` to stash something that
 belongs in a document. Here that something would be a roster.
 
-**No roster is ever persisted, and that is a decision rather than an omission.** Two
-arguments, and the second is the stronger:
+~~**No roster is ever persisted, and that is a decision rather than an omission.**~~
+**Reversed the same day — see §20.** The two arguments below are kept because one of them
+was wrong in a way worth remembering, and the other became the risk §20 accepts on purpose:
 
 1. `file://` has no dependable storage. IndexedDB is refused outright by Firefox and
    Safari at an opaque origin, and Chromium keys it to the file's path, so it vanishes
@@ -357,8 +359,118 @@ you were on opens directly, because the *id* was remembered and the *roster* was
 A different year, a deleted class or an emptied one falls through to the picker rather
 than guessing.
 
-Wanting the bar to survive without the file is the real argument for serving this half —
-and that is §1's territory, not a feature request.
+**Where each argument ended up.** The first was overstated: `localStorage` works on
+`file://` in the browsers this is used in, and a 150-student roster is ~15 KB against a
+5 MB budget, so the size objection never bit at this scale. The privacy point was weaker
+still — Planbook already keeps IEP and 504 data in the same browser on the same machine,
+and the boundary in both cases is the lock on the drawer.
+
+The second argument was sound but assumed its conclusion: a copy can only go *stale*
+against a source you have declared authoritative. §20 declares that the app holds the
+roster, at which point there is nothing to be stale against — and what replaces staleness
+is **drift**, two systems editing the same children independently. §20 accepts that
+knowingly rather than pretending it away.
+
+What survives unchanged is the behaviour described above: this section's class bar is
+still the loaded document, and §20's store is a separate thing layered over it.
+
+## 20 · The app holds the class list
+
+Decided 14 Sep 2026. **This reverses §8's "the roster is always imported, never authored in
+the app."** Classes are created in the app, rosters are populated into them, and both
+persist between sessions.
+
+The reason is a mismatch of rates. A roster changes a few times a term; a rubric prints
+weekly. Re-importing before every print pays a per-print tax for a per-term event, and the
+tax is paid on the morning when there is least time to pay it.
+
+**The shape is Planbook's, deliberately.** One document per school year: a flat `students`
+array, and each class holding `roster: [studentId]`. So moving a student between classes is
+list membership rather than a record that moves, and a student in two classes exists once.
+Copying the shape also keeps a future merge of the two apps a merge rather than a
+translation.
+
+**Dropping a student removes them from the roster and keeps the student.** A sheet already
+printed carries their ID, and if their work comes back in next week's scan the splitter
+still has to resolve it. A dropped student who vanishes from the document turns a
+recoverable packet into `unknown_student`.
+
+**What this accepts is drift**, and it is accepted rather than solved. Two systems can now
+hold a roster for the same children and be edited independently. The mitigation is that a
+class created from a Planbook backup keeps Planbook's `s_…` ids, so a later re-import
+reconciles — same student, same id, add the new, name the missing — instead of duplicating
+everyone.
+
+Rejected: reading Planbook's live document, which needs this half served and is §1's
+territory; and syncing back to Planbook, which would make this app a writer of someone
+else's record.
+
+## 21 · A student ID is permanent the moment it is printed
+
+It is inside the QR code, it is what the splitter joins on (§15), and after a print run it
+is on paper in a stack on a desk. **So an ID is never regenerated.** Renumber a student and
+every sheet already printed for them becomes unroutable — `unknown_student`, and the run
+refuses.
+
+**Pre-assigned beats generated, always.** A school ID is stable, meaningful, and survives a
+re-import. The app generates only where the field is blank, and doing so is a confirmed act
+rather than a quiet default — the current importer invents `String(1001 + i)` silently,
+which is exactly how two sections both come to number themselves from 1001 and why
+`roster_id_collision` exists.
+
+**Generated IDs are unique across the year, not the class**, and they are readable:
+`2026-0042`, not an opaque token. `--force-code` takes a student ID, and that is a value a
+teacher reads off a sheet and types under time pressure when a code will not decode.
+`7=2026-0042` survives that; `7=s_3f9a1b2c4d` is a transcription error waiting to happen.
+The prefixed form is also visibly *not* a school ID, so the two can never be confused and a
+generated ID cannot collide with a real one.
+
+A year may therefore hold two ID shapes — `2026-0042` generated, `s_…` from Planbook. That
+is deliberate. The splitter treats IDs as opaque, and the Planbook ones are what make
+re-import reconcile (§20).
+
+**The record kept for recovery is the roster file itself, with the ID column filled in.**
+One artifact doing two jobs: it is the name-to-ID map that cannot be reconstructed if the
+store is lost while sheets are in a stack, and it makes the next import clean. A separate
+audit file was rejected because it solves only the first — and a blank-ID CSV re-imported
+unchanged would mint a *second* set of IDs for the same children, with sheets already
+printed under the first.
+
+The honest limit: a browser cannot report that a download was saved. So the file is offered,
+the offer is recorded, and the app keeps saying so until another is taken. It is not a hard
+gate, because a gate satisfied by dismissing a dialog teaches people the gate is noise.
+
+## 22 · Drop-in print survives, under one rule
+
+Both modes are kept: a roster dropped in and printed with nothing saved, and classes that
+persist. Persistence is what most printing will use, so **the class list is the front door
+and drop-in is the smaller path underneath** — the reverse of how the app opens today.
+
+Two modes create exactly one trap, and it is severe: drop a CSV with no IDs, let the app
+generate them, print thirty sheets, close the browser. The IDs are gone and the stack is
+unroutable. That failure is not reachable in either mode alone.
+
+**The rule that removes it: a roster that brings its own identity may print and be
+forgotten; a roster whose identity the app had to invent is kept.** So a CSV with student
+IDs prints drop-in, a Planbook backup prints drop-in — its ids come pre-assigned — and a CSV
+with blank IDs is promoted to a saved class by the act of generating them. Nothing for
+anyone to remember, and the reason is honest: minting a permanent identifier is inherently
+stateful, so whatever minted it has to hold it.
+
+The rejected alternative was to allow generation in drop-in mode and rest recovery entirely
+on the downloaded file. Coherent, but it stakes something irreversible on the one action the
+app cannot verify (§21).
+
+**The mode is visible, because mode confusion is the whole risk.** A saved class is an
+ordinary tab in the class bar; a dropped-in one is a tab marked as unsaved. A loaded
+drop-in roster can be promoted with one button, which is also how most people will discover
+persistence at all.
+
+**A store that is not storing must say so, loudly and permanently.** `localStorage` throws
+in a private window and can be refused for a `file://` page; `setPref` already returns
+`false` and nothing currently looks. A teacher who believes a class is saved and is wrong
+finds out next September. Following Planbook's save chip: red, and it stays red, because a
+condition that flaps is a condition nobody reads.
 
 ---
 
@@ -368,7 +480,7 @@ and that is §1's territory, not a feature request.
 |---|---|
 | Drive filing | The PoC stops at per-student PDFs. This is the obvious next piece. |
 | Folder matching, creation, moving | Drawn and disabled in the mockups. Folder IDs come from the CSV for now, and §15 is what makes that safe to live with: placeholder IDs can print for a term and still split once the real ones arrive. |
-| Markdown save and reload of assignments | **Decided, not built.** Format sketched in the mockup notes: frontmatter for the header values, `---` between prompts, the back named in frontmatter rather than detected by heading text. Makes boundary detection deterministic after the first pass, and an assignment file carries no student data so it is freely shareable. |
+| Saving assignments and reloading them | **Not built.** An assignment carries no student data, so unlike a roster it is freely shareable — and unlike a roster it is *meant* to freeze (§7), which is why the objection in §20 does not apply to it. The format is open: JSON round-trips the sanitised HTML exactly and already exists as `data/assignment-sample.json`; markdown with frontmatter reads better and shares better but handles tables badly, which phase 5 cares about. Decide it there. (An earlier version of this row cited a markdown sketch "in the mockup notes". There is no such sketch — the word `frontmatter` appears nowhere outside this file.) |
 | Splitting one Doc that holds several prompts | Deferred entirely by pasting front and back separately. The sample Doc holds five prompts for one essay. |
 | Multi-class printing | **Built for a Planbook year (§19)** — the class bar switches period and the paste carries across. Not available from a CSV, which holds one class. |
 | Blank-page detection | Not needed at all — see §5. |
