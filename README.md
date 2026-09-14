@@ -15,6 +15,7 @@ nothing here touches the network.
   **Read this before changing anything structural.**
 - [docs/field-test-2026-09-14.md](docs/field-test-2026-09-14.md) — what the first run on
   real paper measured.
+- [docs/roadmap.md](docs/roadmap.md) — the staged plan, what is done, and what is next.
 - [Design mockups](https://claude.ai/code/artifact/b03cc902-6fb2-4210-a565-e6a2ca34f809) —
   eleven screens, with the reasoning attached as notes on the canvas.
 - Style authority: [edu-style-guide](https://github.com/wildbil2me/edu-style-guide). Cite

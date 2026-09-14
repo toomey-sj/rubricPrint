@@ -1,0 +1,108 @@
+# Working in this repo
+
+One personalized double-sided sheet per student — assignment prompt and a routing code
+on the front, scoring rubric on the back. Students hand the sheet in on top of their
+work; the class stack goes through a duplex copier as one PDF; the splitter cuts that
+PDF back into per-student PDFs by the codes.
+
+**Read [docs/decisions.md](docs/decisions.md) before changing anything structural.** The
+code says what it does; that file says why, for the choices where the reasoning is not
+recoverable from reading it. Current plan and progress: [docs/roadmap.md](docs/roadmap.md).
+
+## Two halves, two sets of rules
+
+**`app/`** is the print surface. It opens by double-clicking `app/index.html` — no server,
+no build step, no network, zero dependencies, no ES modules. Printing day is exactly when
+the school network is least trustworthy, so this half must work without it.
+
+**`tools/`** is the desk-side splitter. npm packages are fine and it runs from a terminal,
+because it runs after class rather than during it.
+
+**Google's OAuth cannot work from a `file://` origin** — the redirect URI is rejected and
+`fetch` sends `Origin: null`. That is not a preference to revisit; it is the reason the
+project has two halves. Anything that needs Drive belongs in `tools/`. Nothing that needs
+Drive may creep into `app/`.
+
+## Contracts that cannot break
+
+Changing any of these changes the other side too, and needs its reasoning recorded in
+`docs/decisions.md` — not in a commit message.
+
+| Contract | Where it lives |
+|---|---|
+| Routing code at **left 674, top 48, 94 × 94** on an 816 × 1056 page | `app/app.js:8` `QR_BOX` ↔ `tools/lib/pdf.mjs` `CROP` |
+| **Exactly 2 pages per student** — `height` not `min-height`, `overflow: hidden`, so content clips loudly instead of reflowing and shearing the duplex run | `app/index.html` `.sheet` |
+| **One code per sheet, front only.** A second code starts a phantom packet and cuts every student in half | `app/app.js` `backSheet()`, asserted in `preflight()` |
+| **No `background-color` anywhere on a `.sheet`.** Browsers omit fills unless the viewer ticks "Background graphics", which is off by default. Every line is a border or a text colour | `app/index.html`, linted in `preflight()` |
+| **A code starts a packet**, and every page after it belongs to that student until the next code. Nothing else is inferred | `tools/lib/packets.mjs` `buildPackets()` |
+| **62-byte payload budget.** `folderId\|runId\|studentId`, version 4, EC level M, byte mode, capped on purpose so a long payload fails loudly rather than densifying | `app/qr.js`, counter in `updatePayloadSize()` |
+
+The header band is fixed height and `.sheet-head-qr` cannot shrink, because a long name
+must truncate rather than push the code out of its rectangle.
+
+## Principles that govern new work
+
+- **The app proposes, a person confirms.** True of columns, packet boundaries, folder
+  matches alike. Nothing structural happens invisibly.
+- **Nothing is written when a student is missing.** A half-correct split that gets filed is
+  worse than no split, because the mis-filing is invisible. The splitter exits non-zero and
+  writes only the report.
+- **Blank backs are kept and filed.** A blank side is evidence that the scanner caught the
+  page. The count filed always reconciles with the count scanned.
+- **The app has no opinion about rubric shape.** The real rubric is a holistic scale, not a
+  criteria × levels grid. Anything that assumes a grid breaks on the first real document.
+- **The paste is a snapshot, not a workaround.** The copy the app holds is the record of
+  what was actually handed out, and stays true after the Doc is edited next year.
+
+## House style
+
+- **Cite style-guide rule IDs in comments and commit messages** when a rule drove the
+  change — `(ARCH-04, CODE-04)`, `CODE-09`. Authority:
+  <https://github.com/wildbil2me/edu-style-guide>.
+- **Comments explain why, not what.** This codebase is unusually heavily commented on
+  purpose, and the comments carry field-test evidence and rejected alternatives. Match that
+  density. A comment that restates the line below it is noise; a comment naming the measured
+  reason a threshold exists is the point.
+- Section banners: `/* ── Name ─────────────────────────── */`.
+- `app/` is plain ES5-flavoured script inside an IIFE — `var`, function declarations, string
+  concatenation, `'use strict'`. No modules, no arrow functions, no template literals. This
+  is not legacy; it is the zero-dependency constraint.
+- `tools/` is modern ESM — `const`/`let`, arrow functions, template literals, top-level
+  await.
+- `tools/lib/packets.mjs` is deliberately pure: no PDF, no filesystem, no rendering. Keep it
+  that way, because that is where the boundary rule gets its real test coverage.
+
+## Checking it without paper
+
+```
+cd tools
+node packets-test.mjs      # the boundary rule and every way it goes wrong
+node qr-selftest.mjs       # encode all payloads, decode them back with jsQR
+node verify-sheet.mjs ../data/out/sheets.pdf --run SRE1-2026-09-18
+node make-test-scan.mjs    # synthesize a duplex scan from a printed sheets.pdf
+```
+
+Run **both** test scripts — `npm test` currently only runs `qr-selftest.mjs`.
+
+`verify-sheet.mjs` is the one that earns its keep: it reads the printed PDF through the same
+crop the splitter uses, proving the codes are readable and correctly placed before a sheet of
+paper is spent. `make-test-scan.mjs --break leading|missed|duplicate` rehearses each failure.
+
+## Traps
+
+- **Don't widen the crop when decoding regresses.** Position has never been the problem — a
+  real scan measured inside the sheet's own geometry to within a pixel. The fix that worked
+  was Otsu-thresholding the crop before handing it to jsQR. See `binarize()` and
+  [docs/field-test-2026-09-14.md](docs/field-test-2026-09-14.md).
+- **Google Docs wraps clipboard HTML** in `<b id="docs-internal-guid-…" style="font-weight:normal">`.
+  Keep that `<b>` naively and the entire assignment prints bold.
+- **The splitter and the test tools currently hardcode `data/roster-sample.json`.** A real
+  class would split against five fictional poets, silently. Fixing this is phase 1.
+- **`app/` cannot `fetch()` a sibling file** from `file://` — the origin is opaque and the
+  request is refused as cross-origin. Files arrive through `FileReader` after the user picks
+  or drops them. The `?demo` fixture uses `fetch` and therefore only runs over http.
+
+## Not built yet
+
+Drive filing, folder matching and creation, markdown save and reload, splitting one Doc that
+holds several prompts, multi-class printing. Blank-page detection is not needed at all.

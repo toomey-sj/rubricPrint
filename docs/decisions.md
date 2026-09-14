@@ -162,6 +162,41 @@ mostly-white crop of a scanned page. Otsu-thresholding the crop first took the h
 from 2/5 to 5/5 on real paper. Full detail and the measurement table in
 [field-test-2026-09-14.md](field-test-2026-09-14.md).
 
+## 13 · Grade the paper, then scan it
+
+Decided 14 Sep 2026, once the rubric gained checkboxes the teacher ticks by hand.
+
+The order is **collect → grade on paper → scan → split → file.** Scanning first would
+archive a blank rubric: the boxes would be ticked after the page had already been captured,
+and the grade would exist only on a sheet that then gets recycled. A portfolio of work with
+no marks on it is half the record.
+
+Two consequences worth keeping:
+
+- **The filed PDF is the graded artifact.** The student's work, the prompt they answered and
+  the scored rubric are one document, because all three were on the paper when it went
+  through the feeder. Nothing has to be stitched together afterwards.
+- **The human check moves upstream.** Grading means handling each student's stack — sheet on
+  top, their work beneath — so the question of whether the right work is behind the right
+  sheet is answered on paper, before a scan exists. It does not make the split infallible; a
+  misdecoded code can still misattribute pages. But it means any error afterwards is a
+  machine error on an input a person already validated, which is a far smaller thing to
+  reason about.
+
+The cost is that sheets now live on a desk through grading rather than being scanned the same
+day. Wear is still a non-issue — they do not go home — and a lost sheet reprints byte-identically,
+because the code is derived from `folderId|runId|studentId` rather than stored.
+
+## 14 · Boxes print empty
+
+Whatever a pasted rubric carries, **every checkbox prints unticked.** A pre-ticked box in the
+source Doc is an authoring artifact, not an instruction, and printing it would hand thirty
+students a rubric that had already scored them.
+
+This is the app having an opinion about content, which §9 otherwise forbids — so it is scoped
+as narrowly as possible: the box's *state* is normalised, its presence and position are not.
+Per §6 the app says on screen when it has unticked something, rather than doing it silently.
+
 ---
 
 ## Deliberately not built
