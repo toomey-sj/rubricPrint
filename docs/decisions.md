@@ -175,7 +175,7 @@ from 2/5 to 5/5 on real paper. Full detail and the measurement table in
 | Multi-class printing | The assignment is scoped **above** the class: paste once, print several periods. Not yet reflected in the app. |
 | Blank-page detection | Not needed at all — see §5. |
 
-## Open questions
+## Known limits, and how they are handled
 
 - **Handling wear is a near-non-issue.** Sheets live one class period: handed out at the
   start, collected at the end, so they do not go home and do not get folded into a
@@ -185,9 +185,19 @@ from 2/5 to 5/5 on real paper. Full detail and the measurement table in
   `folderId|runId|studentId` rather than stored, so a reprint produces a byte-identical
   symbol and the replacement is interchangeable with the original. Losing a sheet costs
   one page, not a recovery procedure.
-- **A full class is untested.** Five students, not thirty. Nothing suggests a scaling
-  problem — the splitter is linear in pages — but no feeder has been loaded deep.
-- **Nobody has confirmed by eye** that the handwriting inside a student's PDF is the
-  handwriting that went behind their sheet. Verified mechanically only.
+- **Attribution is checked while grading, by design.** Nobody needs to verify the split
+  independently: the teacher reads every packet anyway, and a page in the wrong packet is
+  obvious the moment it is graded. Grading *is* the verification pass, not an extra step —
+  which is why the splitter does not need to be trusted blindly, only to be honest about
+  what it was unsure of.
+
+  **Not yet built, and the gap this exposes:** when grading catches a mis-file, there is no
+  way to move pages between packets. `--force-code` covers a code that would not decode; it
+  does not cover "these two pages belong to the student before." That is the natural
+  companion to Drive filing on the roadmap.
+
+- **Rollout is laddered on purpose.** Homework assignments first, where a mis-file costs
+  little and is caught the same day, before major assessments. A full class of thirty has
+  not been run; nothing suggests a scaling problem, since the splitter is linear in pages.
 - **Whether an assignment ever needs an image or a complex table.** If yes, revisit the
   Docs add-on (§7). If no, paste is settled.

@@ -90,8 +90,17 @@ the blank page is in their folder proving the scanner saw it and it was empty.
   `folderId|runId|studentId` rather than stored, so a reprint produces a byte-identical
   symbol and the replacement is interchangeable with the original. Losing a sheet costs
   one page, not a recovery procedure.
-- **A full class.** Five students, not thirty. Nothing suggests a scaling problem — the
-  splitter is linear in pages — but the stack has never been deep enough to jam a feeder.
-- **Whose handwriting is whose.** The codes, page counts and filenames were verified
-  mechanically. Nobody has confirmed by eye that the pages inside Whitman's PDF are the
-  pages that went behind Whitman's sheet.
+- **Attribution is checked while grading, by design.** Nobody needs to verify the split
+  independently: the teacher reads every packet anyway, and a page in the wrong packet is
+  obvious the moment it is graded. Grading *is* the verification pass, not an extra step —
+  which is why the splitter does not need to be trusted blindly, only to be honest about
+  what it was unsure of.
+
+  **Not yet built, and the gap this exposes:** when grading catches a mis-file, there is no
+  way to move pages between packets. `--force-code` covers a code that would not decode; it
+  does not cover "these two pages belong to the student before." That is the natural
+  companion to Drive filing on the roadmap.
+
+- **Rollout is laddered on purpose.** Homework assignments first, where a mis-file costs
+  little and is caught the same day, before major assessments. A full class of thirty has
+  not been run; nothing suggests a scaling problem, since the splitter is linear in pages.
