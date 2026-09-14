@@ -54,7 +54,30 @@ a { color: #4a5fbb; }
 .header-title p { color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 1px; }
 .save-indicator { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
 .save-indicator.saved { background: #eafaf1; color: #1a6b3a; }
+.save-indicator.saving { background: #fef5ea; color: #8a6d1a; }
 .save-indicator.waiting { background: #eef0f4; color: #6b7a8d; }
+
+/* The class bar. Values are the mockups' own (mockups/parts/book.css), so the
+   built thing and the drawn thing agree — the strip was drawn on four boards and
+   never implemented, which is how it came to contradict the notes beside it. */
+.header-bottom {
+  display: flex; align-items: center; gap: 6px;
+  padding: 0 20px 8px; overflow-x: auto;
+}
+.header-bottom:empty { display: none; }
+.cls-tab {
+  padding: 4px 14px; border-radius: 6px; border: none; cursor: pointer;
+  font-size: 13px; font-weight: 700; background: rgba(255,255,255,0.08);
+  color: rgba(255,255,255,0.55); flex-shrink: 0; white-space: nowrap;
+}
+.cls-tab:hover { background: rgba(255,255,255,0.16); color: rgba(255,255,255,0.8); }
+/* DARK-01 — a primary tab inverts to near-black. */
+.cls-tab.active { background: #1a1a2e; color: #fff; }
+.cls-tab-count { font-weight: 600; opacity: 0.6; margin-left: 6px; }
+.cls-tab-note {
+  font-size: 11px; color: rgba(255,255,255,0.45); margin-left: 4px;
+  flex-shrink: 0; white-space: nowrap;
+}
 
 .main { padding: 20px; max-width: 1300px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
 .panel { background: #fff; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); overflow: hidden; }
@@ -243,6 +266,7 @@ a { color: #4a5fbb; }
     </div>
     <span class="save-indicator waiting" id="status">Waiting for a roster</span>
   </div>
+  <div class="header-bottom" id="classBar"></div>
 </header>
 
 <main class="main no-print">

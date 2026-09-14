@@ -8,7 +8,7 @@
      48px page padding + (720px content − 94px code column) = 674. */
   var QR_BOX = { left: 674, top: 48, size: 94 };
 
-  var state = { roster: null, planbook: null, front: '', back: '' };
+  var state = { roster: null, planbook: null, classId: null, front: '', back: '' };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -37,9 +37,26 @@
          all three sources, because the picker hands back the same shape. */
       if (parsed.planbook) {
         state.planbook = parsed.planbook;
-        renderClassPicker();
+        state.classId = null;
+
+        /* Reopen the class this browser was last on, the way Planbook's own boot
+           does — but only when the file is the same year, and only when that class
+           is still in it and still has a roster. Anything else falls through to the
+           picker rather than guessing. The choice is visible in the bar either way,
+           so this is a shortcut and never a silent decision (§6). */
+        var remembered = null;
+        if (getPref('openYear') === parsed.planbook.year) {
+          planbookClasses(parsed.planbook).forEach(function (c) {
+            if (c.id === getPref('openClassId') && (c.roster || []).length) remembered = c.id;
+          });
+        }
+        if (remembered) openPlanbookClass(remembered);
+        else renderClassPicker();
         return;
       }
+      state.planbook = null;
+      state.classId = null;
+      renderClassBar();
       commitRoster(parsed);
     };
     reader.onerror = function () { fail('Could not read that file.'); };
@@ -167,6 +184,98 @@
     };
   }
 
+  /* ── Preferences ───────────────────────────────────────────────────────────
+     A whitelist, and setPref refuses anything not on it. Lifted from Planbook's
+     src/prefs.js, including the reason: the likely cause of an undeclared key is
+     someone reaching for localStorage to stash something that belongs in a
+     document. Here that would be a roster — student names and IDs — and this half
+     of the project has no IndexedDB to offer instead.
+
+     SO NOTHING HERE IS STUDENT DATA. Two ids and a year label, which is enough to
+     reopen the class you were on and nothing like enough to reconstruct a class.
+     The roster itself is re-read from the file every time, which also means it can
+     never go stale against the Planbook document it came from.
+
+     Every access is wrapped: a file:// page and a private window both throw. */
+  var PREF_PREFIX = 'rubricprint_';
+  var PREF_DEFAULTS = { openYear: '', openClassId: '' };
+
+  function getPref(key) {
+    if (!(key in PREF_DEFAULTS)) return null;
+    try {
+      var raw = localStorage.getItem(PREF_PREFIX + key);
+      return raw === null ? PREF_DEFAULTS[key] : JSON.parse(raw);
+    } catch (err) {
+      return PREF_DEFAULTS[key];
+    }
+  }
+
+  function setPref(key, value) {
+    if (!(key in PREF_DEFAULTS)) {
+      /* Loud on purpose — see above. */
+      if (window.console) console.error('prefs: refusing to write "' + key +
+        '" — not a declared UI preference.');
+      return false;
+    }
+    try {
+      localStorage.setItem(PREF_PREFIX + key, JSON.stringify(value));
+      return true;
+    } catch (err) {
+      return false;
+    }
+  }
+
+  /* ── The class bar ─────────────────────────────────────────────────────────
+     Drawn on four mockup boards and never built, which is how it came to
+     contradict the notes pinned beside it. It is buildable now because a Planbook
+     year document carries several classes — a CSV is exactly one, and a strip with
+     one tab on it is furniture.
+
+     It is also multi-class printing, which decisions.md listed as decided and not
+     built: the assignment is scoped ABOVE the class, so switching tabs keeps the
+     paste and the header fields and re-renders the sheets for the next period.
+     Paste once, print several periods. */
+  function renderClassBar() {
+    var bar = $('classBar');
+    if (!state.planbook) { bar.innerHTML = ''; return; }
+
+    var classes = planbookClasses(state.planbook);
+    bar.innerHTML = classes.map(function (c) {
+      var n = (c.roster || []).length;
+      var active = c.id === state.classId;
+      return '<button class="cls-tab' + (active ? ' active' : '') + '" ' +
+        'data-tab="' + escapeText(c.id) + '"' + (active ? ' aria-current="true"' : '') +
+        (n ? '' : ' disabled') + '>' +
+        escapeText(c.name) +
+        '<span class="cls-tab-count">' + n + '</span>' +
+      '</button>';
+    }).join('') +
+      '<span class="cls-tab-note">Planbook ' + escapeText(state.planbook.year) +
+      ' · the prompt carries across</span>';
+
+    var tabs = bar.querySelectorAll('[data-tab]');
+    for (var i = 0; i < tabs.length; i++) {
+      tabs[i].addEventListener('click', function (e) {
+        openPlanbookClass(e.currentTarget.getAttribute('data-tab'));
+      });
+    }
+  }
+
+  function openPlanbookClass(classId) {
+    if (classId === state.classId) return;
+    var parsed;
+    try {
+      parsed = rosterFromPlanbook(state.planbook, classId);
+    } catch (err) {
+      return fail(err.message);
+    }
+    state.classId = classId;
+    setPref('openYear', state.planbook.year);
+    setPref('openClassId', classId);
+    commitRoster(parsed);
+    renderClassBar();
+  }
+
   function renderClassPicker() {
     var doc = state.planbook;
     var classes = planbookClasses(doc);
@@ -200,13 +309,7 @@
     var buttons = $('rosterList').querySelectorAll('[data-class]');
     for (var i = 0; i < buttons.length; i++) {
       buttons[i].addEventListener('click', function (e) {
-        var parsed;
-        try {
-          parsed = rosterFromPlanbook(state.planbook, e.currentTarget.getAttribute('data-class'));
-        } catch (err) {
-          return fail(err.message);
-        }
-        commitRoster(parsed);
+        openPlanbookClass(e.currentTarget.getAttribute('data-class'));
       });
     }
 
@@ -698,7 +801,9 @@
     ]).then(function (both) {
       if (wantsPlanbook) {
         state.planbook = both[0];
-        state.roster = rosterFromPlanbook(both[0], planbookClasses(both[0])[classIndex].id);
+        state.classId = planbookClasses(both[0])[classIndex].id;
+        state.roster = rosterFromPlanbook(both[0], state.classId);
+        renderClassBar();
       } else {
         state.roster = parseRosterCsv(both[0]);
       }

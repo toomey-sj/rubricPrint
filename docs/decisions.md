@@ -316,6 +316,50 @@ data model fits before anything is committed to. It does fit: 18 students out of
 Planbook class print, verify, scan and split with no errors, and the payload is 53 of 62
 bytes.
 
+## 19 · The class bar is the loaded year, not a saved list
+
+Added 14 Sep 2026. The header's class strip was drawn on four mockup boards and never
+built — the one element on the whole canvas with no note pinned to it, and the notes
+around it said the opposite ("THE ROSTER IS ALWAYS IMPORTED"). It is buildable now
+because a Planbook year document carries several classes; a CSV is exactly one, and a
+strip with one tab on it is furniture.
+
+**The tabs are the open document, held in memory.** No roster is stored anywhere. Drop
+the backup, and the classes in it become the bar; switching tabs re-reads that class out
+of the same document.
+
+**This is also multi-class printing**, which was listed below as decided and not built.
+The assignment is scoped *above* the class, so switching tabs keeps the paste and the
+header fields and re-renders the sheets for the next period. Paste once, print several
+periods.
+
+**What persists is two ids and a year label.** `rubricprint_openYear` and
+`rubricprint_openClassId` in `localStorage`, through a whitelist that refuses any
+undeclared key — lifted from Planbook's `src/prefs.js` along with its reason: the likely
+cause of an undeclared key is someone reaching for `localStorage` to stash something that
+belongs in a document. Here that something would be a roster.
+
+**No roster is ever persisted, and that is a decision rather than an omission.** Two
+arguments, and the second is the stronger:
+
+1. `file://` has no dependable storage. IndexedDB is refused outright by Firefox and
+   Safari at an opaque origin, and Chromium keys it to the file's path, so it vanishes
+   silently if the folder moves. `localStorage` does work, but student names and IDs in a
+   store shared across every local HTML file is not a trade worth making for saving one
+   drag.
+2. **The file is already the store, and it cannot go stale.** Re-reading the backup every
+   time means the roster always matches the Planbook document it came from. A saved copy
+   would quietly disagree the first time a student transferred out — and that is the
+   mis-filing this project keeps refusing, arriving by a new route.
+
+So reopening is a shortcut, not a cache: drop the same year's file again and the class
+you were on opens directly, because the *id* was remembered and the *roster* was re-read.
+A different year, a deleted class or an emptied one falls through to the picker rather
+than guessing.
+
+Wanting the bar to survive without the file is the real argument for serving this half —
+and that is §1's territory, not a feature request.
+
 ---
 
 ## Deliberately not built
@@ -326,7 +370,7 @@ bytes.
 | Folder matching, creation, moving | Drawn and disabled in the mockups. Folder IDs come from the CSV for now, and §15 is what makes that safe to live with: placeholder IDs can print for a term and still split once the real ones arrive. |
 | Markdown save and reload of assignments | **Decided, not built.** Format sketched in the mockup notes: frontmatter for the header values, `---` between prompts, the back named in frontmatter rather than detected by heading text. Makes boundary detection deterministic after the first pass, and an assignment file carries no student data so it is freely shareable. |
 | Splitting one Doc that holds several prompts | Deferred entirely by pasting front and back separately. The sample Doc holds five prompts for one essay. |
-| Multi-class printing | The assignment is scoped **above** the class: paste once, print several periods. Not yet reflected in the app. |
+| Multi-class printing | **Built for a Planbook year (§19)** — the class bar switches period and the paste carries across. Not available from a CSV, which holds one class. |
 | Blank-page detection | Not needed at all — see §5. |
 
 ## Known limits, and how they are handled

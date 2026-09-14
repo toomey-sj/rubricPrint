@@ -119,6 +119,12 @@ Planbook students carry no portfolio folder, so theirs is `placeholder-<studentI
 works only because packets join on `studentId` (§15). Do not make folder IDs load-bearing
 again.
 
+A Planbook year fills the header **class bar**, and switching tabs keeps the paste — that
+is multi-class printing (§19). Only two ids and a year label persist, through a whitelist
+in `getPref`/`setPref` that refuses undeclared keys. **Never persist a roster.** `file://`
+has no dependable storage, and the file is already the store: re-reading it is what stops
+the roster going stale against Planbook.
+
 ## Not built yet
 
 Drive filing, folder matching and creation, markdown save and reload, splitting one Doc that

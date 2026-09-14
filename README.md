@@ -51,7 +51,7 @@ during it.
 On the short edge every scoring side comes out upside down. On fit-to-page the code
 shrinks below what a copier can read.
 
-## Two roster formats, on purpose
+## Three roster sources, on purpose
 
 **Import is CSV**, because that is what a spreadsheet exports. **Save is JSON**,
 because that is the app’s own format and it round-trips without guessing at columns
@@ -59,11 +59,18 @@ again. The app reads either: a CSV is a fresh export, a JSON is a roster saved
 earlier.
 
 **A Planbook year backup is the third.** Drop the JSON that Planbook’s backup button
-writes and the app asks which class, then loads that roster. Folder IDs come out as
-`placeholder-<studentId>`, which splits correctly today and reconciles the day real
-Drive IDs arrive — see [decisions.md §15 and §18](docs/decisions.md). Still a file
-read through `FileReader`; the app does not talk to Planbook and still touches no
-network.
+writes and the app asks which class. That year’s classes then fill the bar across the
+top, and switching period keeps the prompt and the rubric — so one paste prints every
+section.
+
+Drop the same file tomorrow and it reopens on the class you were last on. Only the class
+*id* is remembered, never the roster: the file is re-read every time, so what prints can
+never go stale against Planbook. Folder IDs come out as `placeholder-<studentId>`, which
+splits correctly today and reconciles the day real Drive IDs arrive — see
+[decisions.md §15, §18 and §19](docs/decisions.md).
+
+Still a file read through `FileReader`. The app does not talk to Planbook, and still
+touches no network.
 
 The splitter reads JSON. So after importing a real class, click **Save as JSON** and
 keep that file next to the scan — that saved roster is the handoff between the two
