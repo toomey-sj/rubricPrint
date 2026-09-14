@@ -1,0 +1,13 @@
+{
+  "_note": "Fixture for automated print verification. In real use this content arrives by pasting from a Google Doc; this file is what the paste produces, saved so the print path can be checked without a human. Text is verbatim from the sample Summer Reading Essay 1 document.",
+  "fields": {
+    "course": "Summer Reading Essay 1 · There There by Tommy Orange",
+    "topic": "Alcatraz Island",
+    "due": "Sep 18, 2026",
+    "points": "9",
+    "handed": "Sep 11, 2026",
+    "run": "SRE1-2026-09-18"
+  },
+  "front": "<h2>Introduction</h2><p>Answer the prompt below on the piece of paper Mr. Toomey provided. Your response should be between four and five paragraphs and should include evidence from the text. You do not need to cite the text directly, but you should be able to reference details that show you are familiar with the novel.</p><h2>Formatting</h2><ul><li>Write the MLA heading in the upper left-hand corner of the page on the first four lines.</li><li>Title the essay &ldquo;Summer Reading Essay 1&rdquo; on the fifth line.</li><li>Write within the margins.</li><li>Do not skip lines anywhere.</li><li>Your essay should include an introduction, body paragraphs that contain evidence and support for your thesis, and a conclusion.</li></ul><h2>Prompt</h2><p>Explain the significance of Alcatraz Island in the novel. Connect the island to the plot, and at least two characters. An answer that also connects it to a major theme will be eligible for an A. Connections must be meaningful and should demonstrate an understanding of the text.</p>",
+  "back": "<h2>Scoring</h2><ul><li>0&ndash;6: Yes, this is in fact a piece of paper with writing on it.</li><li>7: You were able to identify the significance and how it connects to at least one of the plot, a character, and a major theme.</li><li>8: You were able to identify the significance and how it connects to both the plot and at least one character.</li><li>9: You were able to identify the significance and how it connects to the plot, two characters, and a major theme.</li></ul><h2>Penalties</h2><ul><li>You did not follow directions (&minus;1)</li><li>Your essay contains significant grammatical errors, punctuation errors, or tidiness errors that take away from the readability of your response. (&minus;1)</li></ul>"
+}

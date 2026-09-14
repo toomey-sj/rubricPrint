@@ -1,0 +1,9 @@
+node_modules/
+data/out/
+data/*.pdf
+.playwright-mcp/
+
+# Generated: the seeded design canvas, ~2.7MB with the editor baked in.
+# Rebuilt from mockups/parts/ + canvas.json, and published at
+# https://claude.ai/code/artifact/b03cc902-6fb2-4210-a565-e6a2ca34f809
+mockups/rubric-print-workflow.html

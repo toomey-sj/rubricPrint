@@ -1,0 +1,53 @@
+/* Scan-review thumbnails. PROPOSED components — none of these are in the book yet;
+   shipping them means adding them to style-guide.html in the same change (ARCH-09).
+   Every value is taken from an existing token rather than eyeballed. */
+.packet {
+  background: #f8f9fc; border: 1.5px solid #e0e4f0; border-radius: 10px;
+  padding: 12px; display: flex; flex-direction: column; gap: 10px;
+}
+/* Wash + tint border, the same grammar as a chip, one size up (ACCENT-02). */
+.packet.attention { background: #fef5ea; border-color: #f5c98a; }
+.packet-head { display: flex; align-items: center; gap: 8px; }
+.packet-name { font-size: 13px; font-weight: 600; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.packet-sub { font-size: 11px; color: #6b7a8d; margin-top: 1px; }
+.pages { display: flex; gap: 4px; flex-wrap: wrap; align-items: flex-start; }
+
+.pg {
+  width: 48px; height: 67px; background: #fff; border: 1.5px solid #e0e4ea;
+  border-radius: 5px; padding: 5px; display: flex; flex-direction: column; gap: 3px;
+  position: relative; flex-shrink: 0;
+}
+.pg-l { height: 2px; background: #d0d8e4; border-radius: 1px; }
+.pg-l.s { width: 55%; }
+.pg-l.m { width: 78%; }
+/* Side 1 — the page that carried the routing code, and so the packet boundary. Marked
+   by the code glyph as well as the border, so it reads in greyscale too (A11Y-06). */
+.pg.coded { border-color: #b0bcf0; }
+.pg-bar { height: 8px; background: #1a1a2e; border-radius: 1px; width: 60%; margin-bottom: 2px; }
+.pg-rule { height: 2px; background: #e67e22; border-radius: 1px; margin-bottom: 3px; }
+.pg-mark { position: absolute; top: 4px; right: 4px; }
+
+/* Side 2 — the rubric. Same physical sheet, so it never carries a code and is never a
+   boundary. Recognisable at thumbnail size by its grid alone. */
+.pg-grid {
+  flex: 1 1 auto; display: grid; grid-template-columns: repeat(3, minmax(0, 1fr));
+  grid-template-rows: repeat(4, minmax(0, 1fr)); gap: 1px;
+  background: #d0d8e4; border: 1px solid #d0d8e4;
+}
+.pg-grid > i { background: #fff; display: block; }
+
+/* A blank back. KEPT and filed — a blank side is evidence that the scanner caught the
+   page and that the student's second side really was empty. Drawn narrow only so a
+   review of 28 packets stays readable: a view compression, never a filing decision. */
+.pg.blank {
+  width: 22px; border-style: dashed; border-color: #d0d8e4; background: #f8f9fb;
+  padding: 4px 3px; justify-content: flex-end;
+}
+.pg-tag {
+  position: absolute; bottom: 3px; left: 0; right: 0; text-align: center;
+  font-size: 8px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase; color: #a0aab8;
+}
+.pg-num {
+  position: absolute; bottom: -2px; right: 3px; font-size: 9px; font-weight: 700;
+  color: #a0aab8; font-variant-numeric: tabular-nums;
+}

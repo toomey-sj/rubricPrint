@@ -1,0 +1,33 @@
+/* Paste review. PROPOSED components — not in the book yet; shipping them means adding
+   them to style-guide.html in the same change (ARCH-09). Values are existing tokens. */
+.paste-stage {
+  background: #f8f9fb; border: 1.5px solid #e0e4ea; border-radius: 10px;
+  padding: 14px; display: flex; flex-direction: column; gap: 10px;
+}
+.blk { background: #fff; border: 1.5px solid #e0e4ea; border-radius: 8px; overflow: hidden; }
+/* The scoring block is the same in all five prompts, so it is tagged once and reused. */
+.blk.back { border-color: #b0bcf0; }
+.blk-head {
+  display: flex; align-items: center; gap: 8px; padding: 7px 12px;
+  background: #f8f9fc; border-bottom: 1px solid #eef0f4;
+}
+.blk.back .blk-head { background: #eef2ff; border-bottom-color: #b0bcf0; }
+.blk-title { font-size: 12px; font-weight: 700; color: #1a1a2e; }
+.blk-body { padding: 11px 14px; font-size: 12.5px; line-height: 1.5; color: #1a1a2e; }
+.blk-body p { margin-bottom: 8px; }
+.blk-body p:last-child { margin-bottom: 0; }
+.blk-body ul { padding-left: 18px; margin-bottom: 8px; }
+.blk-body li { margin-bottom: 2px; }
+.blk-label {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  color: #6b7a8d; margin-bottom: 4px;
+}
+
+/* A detected boundary between one prompt and the next. Drawn, labelled and movable —
+   the app proposes the split, a person confirms it. */
+.bound { display: flex; align-items: center; gap: 10px; padding: 2px 0; }
+.bound-line { flex: 1 1 auto; height: 1.5px; background: #b0bcf0; border-radius: 1px; }
+.bound-tag {
+  font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase;
+  color: #4a5fbb; background: #eef2ff; border-radius: 5px; padding: 3px 8px; white-space: nowrap;
+}

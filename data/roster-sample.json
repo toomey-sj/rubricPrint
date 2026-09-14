@@ -1,0 +1,35 @@
+{
+  "class": "Period 1 · English 10",
+  "students": [
+    {
+      "id": "1001",
+      "last": "Shakespeare",
+      "first": "William",
+      "folderId": "1tmJcPxdvSeqe6EBHSIx4zCRRM9kt0EL3"
+    },
+    {
+      "id": "1002",
+      "last": "Dickinson",
+      "first": "Emily",
+      "folderId": "1o3o7FDfz-prYX1IR3uWlNfZlXoLTAB3o"
+    },
+    {
+      "id": "1003",
+      "last": "Whitman",
+      "first": "Walt",
+      "folderId": "1YuSSZer0gh8sVCE15N_zmTu4dMcmP_8r"
+    },
+    {
+      "id": "1004",
+      "last": "Frost",
+      "first": "Robert",
+      "folderId": "1I-wetDbUjt41puWvSWA2J1WYS_yXo1xH"
+    },
+    {
+      "id": "1005",
+      "last": "Angelou",
+      "first": "Maya",
+      "folderId": "1Xu-k-sEyG94vXgxVdaZi3KrSBzefUSzV"
+    }
+  ]
+}

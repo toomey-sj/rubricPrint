@@ -1,0 +1,217 @@
+<div style="width: 1280px; min-height: 1180px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <header class="header">
+    <div class="header-top">
+      <div class="header-left">
+        <div class="header-logo" aria-hidden="true">📋</div>
+        <div class="header-title">
+          <h1>Rubric Print</h1>
+          <p>One personalized rubric per student</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="save-indicator saved">✓ Roster loaded</span>
+        <button class="hdr-icon-btn" title="Portfolio folders" aria-label="Portfolio folders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+        <button class="hdr-icon-btn" title="Settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="header-bottom">
+      <button class="cls-tab active">Period 1 · English 10</button>
+      <button class="cls-tab">Period 2 · English 10</button>
+      <button class="cls-tab">Period 4 · English 9</button>
+      <button class="cls-tab">Period 6 · English 10</button>
+      <button class="cls-tab cls-tab-add">+</button>
+    </div>
+  </header>
+
+  <!-- Gold is a STANDING CONDITION, not an event that just happened (ACCENT-04).
+       A missing folder stays true until someone fixes it, so it is a banner, not a toast. -->
+  <div class="backup-nag">
+    <div>1 student in this class has no portfolio folder. Their sheet prints without a routing code, so the scan cannot be filed automatically.</div>
+    <button class="backup-nag-btn">Match folders</button>
+  </div>
+
+  <main class="main" style="width: 100%;">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <h2>Assignment</h2>
+            <p>These fill the header on the front of every sheet. The prompt and the scoring come from the pasted Doc.</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body" style="display: flex; flex-direction: column; gap: 16px;">
+
+        <div class="field-row">
+          <div class="field" style="flex: 2 1 320px;">
+            <label class="field-label" for="a-title">Assignment title <span class="req" aria-hidden="true">*</span></label>
+            <input class="field-input" id="a-title" value="Summer Reading Essay 1" required>
+          </div>
+          <div class="field">
+            <label class="field-label" for="a-due">Due date</label>
+            <input class="field-input" id="a-due" value="Sep 18, 2026">
+          </div>
+          <div class="field" style="flex: 0 1 140px;">
+            <label class="field-label" for="a-points">Points possible</label>
+            <input class="field-input" id="a-points" value="9" style="font-variant-numeric: tabular-nums;">
+          </div>
+        </div>
+
+        <div style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+
+          <!-- The pasted Doc held five prompts for the same essay. The app does not guess
+               which one this printing uses, and it does not rewrite any of them. -->
+          <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="section-label">The sheet · double-sided</div>
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <span class="badge badge-ok" style="margin-top: 6px;">✓ Front</span>
+              <div class="field" style="flex: 1 1 auto; min-width: 0;">
+                <label class="field-label" for="prompt-pick">Prompt · 5 found in the paste</label>
+                <select class="field-select" id="prompt-pick">
+                  <option>Alcatraz Island</option>
+                  <option>The Interviews</option>
+                  <option>Music</option>
+                  <option>Personal Essay</option>
+                  <option>Optimus Prime</option>
+                </select>
+              </div>
+            </div>
+            <div style="display: flex; align-items: flex-start; gap: 10px;">
+              <span class="badge badge-ok" style="margin-top: 2px;">✓ Back</span>
+              <div style="flex: 1 1 auto; min-width: 0;">
+                <div style="font-size: 13px; font-weight: 600; color: #1a1a2e;">Scoring · 0&ndash;6, 7, 8, 9</div>
+                <div style="font-size: 11px; color: #6b7a8d; margin-top: 2px; line-height: 1.5;">One holistic scale plus 2 penalties · same on every prompt</div>
+              </div>
+              <button class="class-action-btn" style="flex-shrink: 0;">Replace</button>
+            </div>
+          </div>
+
+          <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="section-label">Front header preview · first student</div>
+            <div style="background: #fff; border: 1.5px solid #e0e4ea; border-radius: 8px; padding: 10px 12px; display: flex; align-items: center; gap: 12px;">
+              <div style="flex: 1 1 auto; min-width: 0;">
+                <div style="font-size: 15px; font-weight: 700; color: #1a1a2e; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;">Amara Okonkwo</div>
+                <div style="font-size: 11px; color: #6b7a8d; margin-top: 2px;">Period 1 · English 10 · 9 points</div>
+                <div style="font-size: 11px; color: #6b7a8d;">Summer Reading Essay 1 · due Sep 18</div>
+              </div>
+              <svg width="34" height="34" viewBox="0 0 24 24" fill="none" aria-hidden="true"><rect width="24" height="24" fill="#fff"/><g fill="#1a1a2e"><path d="M1 1h7v7H1zm2 2v3h3V3z"/><path d="M16 1h7v7h-7zm2 2v3h3V3z"/><path d="M1 16h7v7H1zm2 2v3h3v-3z"/><rect x="10" y="1" width="2" height="2"/><rect x="13" y="3" width="2" height="2"/><rect x="10" y="5" width="2" height="2"/><rect x="10" y="9" width="2" height="2"/><rect x="14" y="9" width="2" height="2"/><rect x="18" y="10" width="2" height="2"/><rect x="21" y="12" width="2" height="2"/><rect x="1" y="10" width="2" height="2"/><rect x="5" y="12" width="2" height="2"/><rect x="10" y="13" width="2" height="2"/><rect x="15" y="14" width="2" height="2"/><rect x="19" y="16" width="2" height="2"/><rect x="10" y="17" width="2" height="2"/><rect x="13" y="20" width="2" height="2"/><rect x="17" y="21" width="2" height="2"/><rect x="21" y="19" width="2" height="2"/></g></svg>
+            </div>
+            <div class="field-hint">The code carries the student&rsquo;s portfolio folder and a short tag for this assignment. It prints on the front only — one code per sheet is what marks the start of a packet.</div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <h2>Students</h2>
+            <p>28 in Period 1 · English 10 · 56 pages, printed double-sided</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+            <button class="class-action-btn">Preview sheets</button>
+            <button class="class-action-btn primary">Print 28 sheets</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="date-batch-bar">
+        <button class="class-action-btn">Select all</button>
+        <button class="class-action-btn">Select none</button>
+        <div class="hdr-divider" style="background: #d0d8e4;"></div>
+        <span style="font-size: 11px; color: #6b7a8d; font-variant-numeric: tabular-nums;">28 selected</span>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+          <button class="toggle-btn" aria-pressed="false">Only students with a folder</button>
+        </div>
+      </div>
+
+      <div>
+        <div class="row selected">
+          <div class="avatar av1" aria-hidden="true">AO</div>
+          <div class="row-main">
+            <div class="row-name" title="Okonkwo, Amara">Okonkwo, Amara</div>
+            <div class="row-sub">ID 4471 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av2" aria-hidden="true">MD</div>
+          <div class="row-main">
+            <div class="row-name" title="Delgado, Mateo">Delgado, Mateo</div>
+            <div class="row-sub">ID 4472 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av3" aria-hidden="true">BN</div>
+          <div class="row-main">
+            <div class="row-name" title="Nguyen, Bao">Nguyen, Bao</div>
+            <div class="row-sub">ID 4473 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av4" aria-hidden="true">RF</div>
+          <div class="row-main">
+            <div class="row-name" title="Fitzgerald, Rowan">Fitzgerald, Rowan</div>
+            <div class="row-sub">ID 4474 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av5" aria-hidden="true">LH</div>
+          <div class="row-main">
+            <div class="row-name" title="Haddad, Layla">Haddad, Layla</div>
+            <div class="row-sub">ID 4475 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av6" aria-hidden="true">CB</div>
+          <div class="row-main">
+            <div class="row-name" title="Brennan, Cormac">Brennan, Cormac</div>
+            <div class="row-sub">ID 4476 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av7" aria-hidden="true">AS</div>
+          <div class="row-main">
+            <div class="row-name" title="Silva, Ana Lucía">Silva, Ana Lucía</div>
+            <div class="row-sub">ID 4477 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av9" aria-hidden="true">JM</div>
+          <div class="row-main">
+            <div class="row-name" title="Martinez, Jordan">Martinez, Jordan</div>
+            <div class="row-sub">ID 4479 · No portfolio folder matched</div>
+          </div>
+          <!-- CHIP-02 — the glyph carries the meaning too, so the row still reads in
+               greyscale and on a projector (A11Y-06). -->
+          <span class="badge badge-warn">⚠ No folder</span>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row selected">
+          <div class="avatar av0" aria-hidden="true">SP</div>
+          <div class="row-main">
+            <div class="row-name" title="Park, Seo-yeon">Park, Seo-yeon</div>
+            <div class="row-sub">ID 4480 · Portfolio folder linked</div>
+          </div>
+          <div class="row-actions"><button class="class-action-btn">Preview</button></div>
+        </div>
+        <div class="row" style="justify-content: center; color: #6b7a8d; font-size: 11px;">19 more</div>
+      </div>
+    </div>
+
+  </main>
+</div>

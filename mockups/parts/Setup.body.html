@@ -1,0 +1,85 @@
+<div style="width: 1280px; min-height: 880px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <header class="header">
+    <div class="header-top">
+      <div class="header-left">
+        <div class="header-logo" aria-hidden="true">📋</div>
+        <div class="header-title">
+          <h1>Rubric Print</h1>
+          <p>One personalized rubric per student</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <button class="hdr-icon-btn" title="Portfolio folders" aria-label="Portfolio folders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+        <button class="hdr-icon-btn" title="Settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="header-bottom">
+      <button class="cls-tab cls-tab-add">+ Add a class</button>
+    </div>
+  </header>
+
+  <main class="main" style="width: 100%;">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <div class="section-label">Step 1</div>
+            <h2 style="margin-top: 3px;">Class roster</h2>
+            <p>The roster never leaves this computer. Nothing is uploaded.</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="dropzone">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8a9bb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3z"/><path d="M3 10h18M9 10v9"/></svg>
+          <div style="font-size: 13px; color: #6b7a8d; line-height: 1.5;">Drop the roster export here, or <a href="#">choose a file</a>.<br>A CSV downloaded from the class spreadsheet.</div>
+        </div>
+        <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="section-label">Columns it reads</div>
+          <div style="display: flex; flex-wrap: wrap; gap: 6px;">
+            <span style="font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 600; color: #4a5fbb; background: #eef2ff; border-radius: 5px; padding: 3px 8px;">Last, First</span>
+            <span style="font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 600; color: #4a5fbb; background: #eef2ff; border-radius: 5px; padding: 3px 8px;">Student ID</span>
+            <span style="font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 600; color: #4a5fbb; background: #eef2ff; border-radius: 5px; padding: 3px 8px;">Period</span>
+            <span style="font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; font-size: 11px; font-weight: 600; color: #6b7a8d; background: #eef0f4; border-radius: 5px; padding: 3px 8px;">Portfolio folder ID</span>
+          </div>
+          <div class="field-hint" style="max-width: 78ch;">These are the columns the class spreadsheet already uses, so an export usually maps itself. Headers that differ get matched on the next screen. Any other column is ignored, and the folder ID can be blank now — a student without one still prints, but the sheet carries no routing code.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <div class="section-label">Step 2</div>
+            <h2 style="margin-top: 3px;">The sheet</h2>
+            <p>Each student gets one double-sided sheet. Paste the assignment into the front and the scoring into the back — a Doc holding several prompts for the same essay is fine, you pick which one on the next screen.</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body" style="display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px;">
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <div class="section-label">Front · the prompt</div>
+          <div class="dropzone" style="padding: 36px 20px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8a9bb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 4H7a2 2 0 0 0-2 2v13a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V6a2 2 0 0 0-2-2h-2"/><rect x="9" y="2" width="6" height="4" rx="1"/><path d="M9 12h6M9 16h4"/></svg>
+            <div style="font-size: 13px; color: #6b7a8d; line-height: 1.5;">Paste the assignment.<br>Several prompts in one Doc is fine.</div>
+          </div>
+        </div>
+        <div style="display: flex; flex-direction: column; gap: 7px;">
+          <div class="section-label">Back · the rubric</div>
+          <div class="dropzone" style="padding: 36px 20px;">
+            <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8a9bb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3z"/><path d="M3 10h18M3 15h18M9 5v14"/></svg>
+            <div style="font-size: 13px; color: #6b7a8d; line-height: 1.5;">Paste the scoring.<br>A grid, a scale or a checklist — whatever you already use.</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>

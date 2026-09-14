@@ -1,0 +1,548 @@
+/* Rubric Print — page logic.
+   Plain script inside an IIFE, no modules, no dependencies (ARCH-04, CODE-04). */
+(function () {
+  'use strict';
+
+  /* The QR's position on the page, in CSS px on an 816 × 1056 sheet. This is the
+     contract tools/split.mjs crops to. Derived from index.html's layout:
+     48px page padding + (720px content − 94px code column) = 674. */
+  var QR_BOX = { left: 674, top: 48, size: 94 };
+
+  var state = { roster: null, front: '', back: '' };
+
+  var $ = function (id) { return document.getElementById(id); };
+
+  /* ── Roster ────────────────────────────────────────────────────────────────
+     IMPORT is CSV, because that is what a spreadsheet exports. SAVE is JSON,
+     because that is the app's own format and it survives round-tripping. Both are
+     accepted here: a CSV is a fresh export, a JSON is a roster saved earlier.
+
+     Read through FileReader, not fetch(). A file:// page cannot fetch a sibling
+     file — the origin is opaque and the request is refused as cross-origin — but
+     a file the user picked or dropped reads fine. */
+  function loadRoster(file) {
+    var reader = new FileReader();
+    reader.onload = function () {
+      var text = String(reader.result);
+      var looksJson = /^\s*[{[]/.test(text);
+      var parsed;
+      try {
+        parsed = looksJson ? parseRosterJson(text) : parseRosterCsv(text);
+      } catch (err) {
+        return fail(err.message);
+      }
+      var missing = parsed.students.filter(function (s) { return !s.folderId; });
+      if (missing.length) {
+        return fail(missing.length + ' student(s) have no portfolio folder, so their ' +
+          'sheets would print without a routing code. Add the column, or remove them.');
+      }
+      state.roster = parsed;
+      renderRoster();
+      render();
+    };
+    reader.onerror = function () { fail('Could not read that file.'); };
+    reader.readAsText(file);
+  }
+
+  function parseRosterJson(text) {
+    var parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (err) {
+      throw new Error('That file is not valid JSON. ' + err.message);
+    }
+    if (!parsed || !Array.isArray(parsed.students) || !parsed.students.length) {
+      throw new Error('That JSON has no "students" array.');
+    }
+    parsed.source = 'JSON — a roster saved earlier';
+    return parsed;
+  }
+
+  /* Quote-aware, because the column that matters most is usually called
+     "Last, First" and holds values like "Shakespeare, William" — both of which
+     carry a comma and would be shredded by a split(','). */
+  function parseCsv(text) {
+    var rows = [], row = [], field = '', quoted = false;
+    var body = text.replace(/\r\n?/g, '\n');
+    for (var i = 0; i < body.length; i++) {
+      var ch = body[i];
+      if (quoted) {
+        if (ch !== '"') { field += ch; continue; }
+        if (body[i + 1] === '"') { field += '"'; i++; continue; }
+        quoted = false;
+      } else if (ch === '"') { quoted = true; }
+      else if (ch === ',') { row.push(field); field = ''; }
+      else if (ch === '\n') { row.push(field); rows.push(row); row = []; field = ''; }
+      else { field += ch; }
+    }
+    if (field !== '' || row.length) { row.push(field); rows.push(row); }
+    return rows.filter(function (r) {
+      return r.some(function (f) { return f.trim() !== ''; });
+    });
+  }
+
+  /* Headers are matched, not assumed. Your spreadsheet's columns are predefined so
+     an export maps itself, but a sheet from a colleague will not, and the mapping
+     is shown on screen so a wrong guess is visible rather than silent. */
+  var COLUMN_RULES = [
+    ['folderId', /folder/i],
+    ['id', /^\s*(student\s*)?(id|number|no\.?)\s*$/i],
+    ['name', /^\s*last\s*,\s*first\s*$|full\s*name|student\s*name|^\s*name\s*$/i],
+    ['last', /^\s*(last|surname|family)\s*(name)?\s*$/i],
+    ['first', /^\s*(first|given)\s*(name)?\s*$/i],
+    ['klass', /period|class|section|hour/i]
+  ];
+
+  function parseRosterCsv(text) {
+    var rows = parseCsv(text);
+    if (rows.length < 2) throw new Error('That CSV has no rows under its header.');
+
+    var headers = rows[0].map(function (h) { return h.trim(); });
+    var map = {};
+    COLUMN_RULES.forEach(function (rule) {
+      if (map[rule[0]] !== undefined) return;
+      headers.forEach(function (header, index) {
+        if (map[rule[0]] === undefined && rule[1].test(header)) map[rule[0]] = index;
+      });
+    });
+
+    if (map.folderId === undefined) {
+      throw new Error('No portfolio-folder column found. Columns read: ' +
+        headers.join(', ') + '.');
+    }
+    if (map.name === undefined && map.last === undefined) {
+      throw new Error('No name column found. Columns read: ' + headers.join(', ') + '.');
+    }
+
+    var students = rows.slice(1).map(function (row, i) {
+      var last = '', first = '';
+      if (map.last !== undefined) {
+        last = (row[map.last] || '').trim();
+        first = map.first !== undefined ? (row[map.first] || '').trim() : '';
+      } else {
+        var whole = (row[map.name] || '').trim();
+        var comma = whole.indexOf(',');
+        if (comma !== -1) {
+          last = whole.slice(0, comma).trim();
+          first = whole.slice(comma + 1).trim();
+        } else {
+          var space = whole.lastIndexOf(' ');
+          last = space === -1 ? whole : whole.slice(space + 1);
+          first = space === -1 ? '' : whole.slice(0, space);
+        }
+      }
+      return {
+        id: map.id !== undefined ? (row[map.id] || '').trim() : String(1001 + i),
+        last: last, first: first,
+        folderId: (row[map.folderId] || '').trim()
+      };
+    }).filter(function (s) { return s.last || s.first; });
+
+    if (!students.length) throw new Error('That CSV has a header but no students.');
+
+    var klass = map.klass !== undefined ? (rows[1][map.klass] || '').trim() : '';
+    var used = Object.keys(map).map(function (key) {
+      return key + ' ← ' + headers[map[key]];
+    });
+    return {
+      class: klass,
+      students: students,
+      source: 'CSV — ' + used.join(' · ')
+    };
+  }
+
+  function fail(message) {
+    $('rosterList').innerHTML = '<div class="row"><span class="badge badge-bad">✕ Not loaded</span>' +
+      '<div class="row-main"><div class="row-sub">' + escapeText(message) + '</div></div></div>';
+    state.roster = null;
+    render();
+  }
+
+  function renderRoster() {
+    var html = state.roster.students.map(function (s, i) {
+      var initials = (s.first[0] || '') + (s.last[0] || '');
+      return '<div class="row">' +
+        '<div class="avatar av' + (i % 10) + '" aria-hidden="true">' + escapeText(initials) + '</div>' +
+        '<div class="row-main">' +
+          '<div class="row-name">' + escapeText(s.last + ', ' + s.first) + '</div>' +
+          '<div class="row-sub">ID ' + escapeText(s.id) + ' · folder …' +
+            escapeText(String(s.folderId).slice(-6)) + '</div>' +
+        '</div>' +
+        '<span class="badge badge-ok">✓ Ready</span>' +
+      '</div>';
+    }).join('');
+    /* Show what was read from which column. A wrong guess is then visible rather
+       than silently printing someone else's name on someone else's sheet. */
+    $('rosterList').innerHTML =
+      '<div class="row" style="background:#f8f9fb;">' +
+        '<div class="row-main"><div class="row-sub">' +
+          escapeText(state.roster.source || '') +
+        '</div></div>' +
+        '<button class="class-action-btn" id="saveRoster">Save as JSON</button>' +
+      '</div>' + html;
+    $('saveRoster').addEventListener('click', saveRoster);
+    $('status').className = 'save-indicator saved';
+    $('status').textContent = '✓ ' + state.roster.students.length + ' students';
+  }
+
+  /* The save side of the split: import is CSV, the app's own format is JSON. */
+  function saveRoster() {
+    var blob = new Blob([JSON.stringify({
+      class: state.roster.class,
+      students: state.roster.students
+    }, null, 2)], { type: 'application/json' });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = 'roster.json';
+    link.click();
+    URL.revokeObjectURL(link.href);
+  }
+
+  /* ── Paste ─────────────────────────────────────────────────────────────────
+     Google Docs puts real HTML on the clipboard, which is why this route keeps
+     tables and lists. It also wraps the whole payload in
+     <b id="docs-internal-guid-…" style="font-weight:normal"> — keep that <b>
+     naively and the entire assignment prints bold. */
+  var ALLOWED = {
+    H1: 1, H2: 1, H3: 1, H4: 1, P: 1, UL: 1, OL: 1, LI: 1, BR: 1,
+    STRONG: 1, EM: 1, TABLE: 1, THEAD: 1, TBODY: 1, TR: 1, TH: 1, TD: 1
+  };
+
+  function sanitize(html) {
+    var box = document.createElement('div');
+    box.innerHTML = html;
+
+    Array.prototype.slice.call(box.querySelectorAll('b[id^="docs-internal-guid"]'))
+      .forEach(unwrap);
+
+    var walk = function (node) {
+      Array.prototype.slice.call(node.childNodes).forEach(function (child) {
+        if (child.nodeType === 3) return;                       // text
+        if (child.nodeType !== 1) return child.remove();        // comments etc.
+        walk(child);
+
+        var tag = child.tagName;
+        if (tag === 'B' || tag === 'SPAN' || tag === 'FONT') {
+          var weight = child.style.fontWeight;
+          var style = child.style.fontStyle;
+          if (weight === 'bold' || weight === '700' || (tag === 'B' && weight !== 'normal')) {
+            return rename(child, 'strong');
+          }
+          if (style === 'italic') return rename(child, 'em');
+          return unwrap(child);
+        }
+        if (tag === 'I') return rename(child, 'em');
+        if (!ALLOWED[tag]) return unwrap(child);
+        while (child.attributes.length) child.removeAttribute(child.attributes[0].name);
+      });
+    };
+    walk(box);
+
+    Array.prototype.slice.call(box.querySelectorAll('p, li'))
+      .forEach(function (el) { if (!el.textContent.trim() && !el.querySelector('br')) el.remove(); });
+
+    return box.innerHTML.trim();
+  }
+
+  function unwrap(el) {
+    while (el.firstChild) el.parentNode.insertBefore(el.firstChild, el);
+    el.remove();
+  }
+
+  function rename(el, tag) {
+    var next = document.createElement(tag);
+    while (el.firstChild) next.appendChild(el.firstChild);
+    el.parentNode.replaceChild(next, el);
+  }
+
+  function wirePaste(el, key) {
+    el.addEventListener('paste', function (event) {
+      event.preventDefault();
+      var clip = event.clipboardData;
+      var html = clip.getData('text/html');
+      var clean = html
+        ? sanitize(html)
+        : '<p>' + escapeText(clip.getData('text/plain')).replace(/\n+/g, '</p><p>') + '</p>';
+      el.innerHTML = clean;
+      state[key] = clean;
+      el.classList.toggle('filled', !!clean);
+      render();
+    });
+    el.addEventListener('input', function () {
+      state[key] = el.innerHTML.trim();
+      render();
+    });
+  }
+
+  /* ── Sheets ────────────────────────────────────────────────────────────────── */
+  function fields() {
+    return {
+      course: $('fCourse').value.trim(),
+      topic: $('fTopic').value.trim(),
+      due: $('fDue').value.trim(),
+      points: $('fPoints').value.trim(),
+      handed: $('fHanded').value.trim(),
+      run: $('fRun').value.trim()
+    };
+  }
+
+  function render() {
+    var box = $('sheets');
+    box.innerHTML = '';
+    updatePayloadSize();
+    if (!state.roster || !state.front || !state.back) return preflight();
+
+    var f = fields();
+    state.roster.students.forEach(function (s, i) {
+      box.appendChild(frontSheet(s, i, f));
+      box.appendChild(backSheet(s, i, f));
+    });
+    preflight();
+  }
+
+  function frontSheet(s, index, f) {
+    var payload = [s.folderId, f.run, s.id].join('|');
+    var sheet = el('section', 'sheet');
+    sheet.dataset.side = 'front';
+    sheet.dataset.student = String(index);
+    sheet.dataset.folder = s.folderId;
+    sheet.dataset.payload = payload;
+
+    var head = el('div', 'sheet-head');
+    var id = el('div', 'sheet-head-id');
+    id.appendChild(text('div', 'sheet-name', s.first + ' ' + s.last));
+    id.appendChild(text('div', 'sheet-meta',
+      (state.roster.class || '') + ' · ID ' + s.id));
+    if (f.handed) id.appendChild(text('div', 'sheet-meta', 'Handed out ' + f.handed));
+    head.appendChild(id);
+
+    var codeBox = el('div', 'sheet-head-qr');
+    codeBox.innerHTML = QR.toSvg(QR.encode(payload));
+    codeBox.appendChild(text('div', 'sheet-code', f.run));
+    codeBox.appendChild(text('div', 'sheet-hint', 'Keep this sheet on top of your work'));
+    head.appendChild(codeBox);
+    sheet.appendChild(head);
+
+    var title = el('div', 'sheet-title');
+    if (f.course) title.appendChild(text('div', 'sheet-course', f.course));
+    if (f.topic) title.appendChild(text('div', 'sheet-topic', f.topic));
+    title.appendChild(text('div', 'sheet-due',
+      'Due ' + f.due + ' · ' + f.points + ' points · scoring on the back'));
+    sheet.appendChild(title);
+
+    var body = el('div', 'sheet-body');
+    body.innerHTML = state.front;
+    sheet.appendChild(body);
+
+    sheet.appendChild(foot(s, f, 1));
+    return sheet;
+  }
+
+  function backSheet(s, index, f) {
+    var sheet = el('section', 'sheet');
+    sheet.dataset.side = 'back';
+    sheet.dataset.student = String(index);
+
+    /* No routing code on the back, deliberately. One code per packet is what makes
+       the boundary rule work; a second would start a phantom packet. */
+    var head = el('div', 'sheet-back-head');
+    head.appendChild(text('div', 'sheet-back-name', s.first + ' ' + s.last));
+    head.appendChild(text('div', 'sheet-back-meta',
+      [f.course.split(' · ')[0], f.topic].filter(Boolean).join(' · ')));
+    sheet.appendChild(head);
+
+    var body = el('div', 'sheet-body');
+    body.innerHTML = state.back;
+    sheet.appendChild(body);
+
+    sheet.appendChild(foot(s, f, 2));
+    return sheet;
+  }
+
+  function foot(s, f, side) {
+    var box = el('div', 'sheet-foot');
+    box.appendChild(text('span', '',
+      s.first + ' ' + s.last + ' · ' + (f.topic || f.course) + ' · side ' + side + ' of 2'));
+    box.appendChild(text('span', 'sheet-foot-code', f.run + ' · ' + s.id));
+    return box;
+  }
+
+  /* ── Pre-flight ────────────────────────────────────────────────────────────
+     Six checks. Together they make the duplex invariant and the splitter contract
+     testable on screen, before a sheet of paper is spent. */
+  function preflight() {
+    var out = [];
+    var sheets = Array.prototype.slice.call(document.querySelectorAll('.sheet'));
+
+    if (!state.roster) out.push(['wait', 'Waiting for a roster.']);
+    if (!state.front) out.push(['wait', 'The front is empty — paste the assignment.']);
+    if (!state.back) out.push(['wait', 'The back is empty — paste the scoring.']);
+
+    if (sheets.length) {
+      var students = state.roster.students.length;
+
+      out.push(sheets.length === students * 2
+        ? ['ok', students + ' students · ' + sheets.length + ' pages · 2 per student']
+        : ['bad', 'Expected ' + students * 2 + ' pages, built ' + sheets.length + '.']);
+
+      var ordered = sheets.every(function (sheet, i) {
+        return sheet.dataset.student === String(Math.floor(i / 2)) &&
+          sheet.dataset.side === (i % 2 ? 'back' : 'front');
+      });
+      out.push(ordered
+        ? ['ok', 'Fronts and backs alternate in roster order.']
+        : ['bad', 'Sides are out of order — duplex would shear.']);
+
+      var overflowing = sheets.filter(function (sheet) {
+        var body = sheet.querySelector('.sheet-body');
+        return body && body.scrollHeight > body.clientHeight + 1;
+      });
+      out.push(overflowing.length === 0
+        ? ['ok', 'Every side fits its page.']
+        : ['bad', overflowing.length + ' side(s) overflow and would be clipped: ' +
+            overflowing.map(function (sheet) {
+              var s = state.roster.students[Number(sheet.dataset.student)];
+              var body = sheet.querySelector('.sheet-body');
+              return s.last + ' (' + sheet.dataset.side + ', +' +
+                (body.scrollHeight - body.clientHeight) + 'px)';
+            }).join(', ')]);
+
+      var codeCounts = sheets.map(function (sheet) {
+        return sheet.querySelectorAll('svg[data-qr]').length;
+      });
+      var codesRight = codeCounts.every(function (n, i) { return n === (i % 2 ? 0 : 1); });
+      out.push(codesRight
+        ? ['ok', 'One routing code per sheet, on the front only.']
+        : ['bad', 'A back carries a routing code — that would start a phantom packet.']);
+
+      var positions = sheets.filter(function (sheet) { return sheet.dataset.side === 'front'; })
+        .map(function (sheet) {
+          var svg = sheet.querySelector('svg[data-qr]');
+          var a = svg.getBoundingClientRect();
+          var b = sheet.getBoundingClientRect();
+          return { left: Math.round(a.left - b.left), top: Math.round(a.top - b.top),
+                   size: Math.round(a.width) };
+        });
+      var placed = positions.every(function (p) {
+        return Math.abs(p.left - QR_BOX.left) <= 1 &&
+               Math.abs(p.top - QR_BOX.top) <= 1 &&
+               Math.abs(p.size - QR_BOX.size) <= 1;
+      });
+      out.push(placed
+        ? ['ok', 'Every code sits at ' + QR_BOX.left + ', ' + QR_BOX.top + ' — ' +
+            'the rectangle the splitter crops to.']
+        : ['bad', 'A code has moved from ' + QR_BOX.left + ', ' + QR_BOX.top + ': ' +
+            JSON.stringify(positions[0]) + '. The splitter crops there — fix the ' +
+            'layout or change tools/split.mjs.']);
+
+      var tinted = [];
+      sheets.forEach(function (sheet) {
+        var all = [sheet].concat(Array.prototype.slice.call(sheet.querySelectorAll('*')));
+        all.forEach(function (node) {
+          if (node.tagName === 'svg' || node.closest('svg')) return;
+          var style = getComputedStyle(node);
+          var bg = style.backgroundColor;
+          var opaque = bg && bg !== 'transparent' && bg !== 'rgba(0, 0, 0, 0)' &&
+            bg !== 'rgb(255, 255, 255)';
+          if (opaque || style.backgroundImage !== 'none') {
+            tinted.push(node.className || node.tagName);
+          }
+        });
+      });
+      out.push(tinted.length === 0
+        ? ['ok', 'No background fills — nothing depends on "Background graphics".']
+        : ['bad', 'Background fill on: ' + tinted.slice(0, 3).join(', ') +
+            '. It will not print unless the viewer ticks Background graphics.']);
+    }
+
+    var bad = out.filter(function (line) { return line[0] === 'bad'; }).length;
+    var waiting = out.filter(function (line) { return line[0] === 'wait'; }).length;
+    $('printBtn').disabled = bad > 0 || waiting > 0 || !sheets.length;
+
+    $('preflight').innerHTML = out.map(function (line) {
+      var badge = line[0] === 'ok' ? '<span class="badge badge-ok">✓ Ok</span>'
+        : line[0] === 'bad' ? '<span class="badge badge-bad">✕ Stop</span>'
+        : '<span class="badge badge-neutral">Waiting</span>';
+      return '<div class="preflight-line">' + badge + '<span>' + escapeText(line[1]) + '</span></div>';
+    }).join('');
+  }
+
+  function updatePayloadSize() {
+    if (!state.roster) { $('payloadSize').innerHTML = '&nbsp;'; return; }
+    var s = state.roster.students[0];
+    var bytes = [s.folderId, fields().run, s.id].join('|').length;
+    $('payloadSize').textContent = bytes + ' of 62 bytes in the code';
+    $('payloadSize').style.color = bytes > 62 ? '#c0392b' : '#6b7a8d';
+  }
+
+  /* ── Helpers ───────────────────────────────────────────────────────────────── */
+  function el(tag, cls) {
+    var node = document.createElement(tag);
+    if (cls) node.className = cls;
+    return node;
+  }
+  function text(tag, cls, value) {
+    var node = el(tag, cls);
+    node.textContent = value;
+    return node;
+  }
+  function escapeText(value) {
+    var node = document.createElement('div');
+    node.textContent = String(value);
+    return node.innerHTML;
+  }
+
+  /* ── Wiring ────────────────────────────────────────────────────────────────── */
+  var drop = $('rosterDrop');
+  ['dragenter', 'dragover'].forEach(function (name) {
+    drop.addEventListener(name, function (e) { e.preventDefault(); drop.classList.add('over'); });
+  });
+  ['dragleave', 'drop'].forEach(function (name) {
+    drop.addEventListener(name, function (e) { e.preventDefault(); drop.classList.remove('over'); });
+  });
+  drop.addEventListener('drop', function (e) {
+    if (e.dataTransfer.files[0]) loadRoster(e.dataTransfer.files[0]);
+  });
+  drop.addEventListener('click', function () { $('rosterFile').click(); });
+  $('rosterLink').addEventListener('click', function (e) { e.preventDefault(); $('rosterFile').click(); });
+  $('rosterPick').addEventListener('click', function () { $('rosterFile').click(); });
+  $('rosterFile').addEventListener('change', function (e) {
+    if (e.target.files[0]) loadRoster(e.target.files[0]);
+  });
+
+  wirePaste($('pasteFront'), 'front');
+  wirePaste($('pasteBack'), 'back');
+
+  ['fCourse', 'fTopic', 'fDue', 'fPoints', 'fHanded', 'fRun'].forEach(function (id) {
+    $(id).addEventListener('input', render);
+  });
+  $('recheck').addEventListener('click', render);
+  $('printBtn').addEventListener('click', function () { window.print(); });
+
+  /* Dev fixture. `?demo` loads the sample roster and assignment so a headless
+     browser can print the sheets without a human dropping and pasting — which is
+     what lets tools/verify-sheet.mjs assert "exactly 2 pages per student" before
+     any paper is spent. It uses fetch(), so it only works when the page is served
+     over http; opened normally from file:// this branch never runs. */
+  if (/[?&]demo/.test(location.search) && location.protocol !== 'file:') {
+    Promise.all([
+      fetch('../data/roster-sample.csv').then(function (r) { return r.text(); }),
+      fetch('../data/assignment-sample.json').then(function (r) { return r.json(); })
+    ]).then(function (both) {
+      state.roster = parseRosterCsv(both[0]);
+      state.front = both[1].front;
+      state.back = both[1].back;
+      $('pasteFront').innerHTML = state.front;
+      $('pasteBack').innerHTML = state.back;
+      Object.keys(both[1].fields).forEach(function (key) {
+        var input = $('f' + key.charAt(0).toUpperCase() + key.slice(1));
+        if (input) input.value = both[1].fields[key];
+      });
+      renderRoster();
+      render();
+      document.body.dataset.demoReady = 'true';
+    });
+  }
+
+  render();
+})();

@@ -1,0 +1,185 @@
+{
+  "pages": [
+    {
+      "id": "page-1",
+      "name": "Print · offline"
+    },
+    {
+      "id": "page-2",
+      "name": "Scan & file · Drive"
+    }
+  ],
+  "artboards": [
+    {
+      "file": "Setup.dc.html",
+      "page": "page-1",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 880,
+      "title": "1 · Start"
+    },
+    {
+      "file": "ColumnCheck.dc.html",
+      "page": "page-1",
+      "x": 1400,
+      "y": 0,
+      "w": 1280,
+      "h": 680,
+      "title": "1b · Check the columns"
+    },
+    {
+      "file": "PasteReview.dc.html",
+      "page": "page-1",
+      "x": 2800,
+      "y": 0,
+      "w": 1280,
+      "h": 1240,
+      "title": "2 · What came across"
+    },
+    {
+      "file": "Main.dc.html",
+      "page": "page-1",
+      "x": 4200,
+      "y": 0,
+      "w": 1280,
+      "h": 1220,
+      "title": "3 · Ready to print"
+    },
+    {
+      "file": "PrintPreview.dc.html",
+      "page": "page-1",
+      "x": 5600,
+      "y": 0,
+      "w": 1280,
+      "h": 900,
+      "title": "4 · Preview, both sides"
+    },
+    {
+      "file": "PrintedFront.dc.html",
+      "page": "page-1",
+      "x": 7000,
+      "y": 0,
+      "w": 816,
+      "h": 1056,
+      "title": "5 · Sheet, front",
+      "print": "fixed"
+    },
+    {
+      "file": "PrintedBack.dc.html",
+      "page": "page-1",
+      "x": 7936,
+      "y": 0,
+      "w": 816,
+      "h": 1056,
+      "title": "6 · Sheet, back",
+      "print": "fixed"
+    },
+    {
+      "file": "ScanUpload.dc.html",
+      "page": "page-2",
+      "x": 0,
+      "y": 0,
+      "w": 1280,
+      "h": 760,
+      "title": "7 · Upload the scan"
+    },
+    {
+      "file": "SplitConfirm.dc.html",
+      "page": "page-2",
+      "x": 1400,
+      "y": 0,
+      "w": 1280,
+      "h": 900,
+      "title": "8 · Review packets"
+    },
+    {
+      "file": "DepositResult.dc.html",
+      "page": "page-2",
+      "x": 2800,
+      "y": 0,
+      "w": 1280,
+      "h": 700,
+      "title": "9 · Filed"
+    },
+    {
+      "file": "PortfolioMap.dc.html",
+      "page": "page-2",
+      "x": 4200,
+      "y": 0,
+      "w": 1280,
+      "h": 880,
+      "title": "One-time · Folder matching"
+    }
+  ],
+  "annotations": [
+    {
+      "id": "note-print-surface",
+      "page": "page-1",
+      "x": 0,
+      "y": -340,
+      "w": 520,
+      "text": "PRINT SURFACE — one offline HTML file, opens from file://.\n\nRoster arrives as a dropped CSV, the prompt and the rubric as pastes from the Doc. Nothing here talks to Google, so it still works on the morning the school network is down."
+    },
+    {
+      "id": "note-roster-import",
+      "page": "page-1",
+      "x": 1400,
+      "y": -340,
+      "w": 520,
+      "text": "THE ROSTER IS ALWAYS IMPORTED — never authored here. Your columns are predefined, so an export maps itself, and this screen earns its place on the two cases that bite: a header that differs, and the folder-ID column, which is normally absent the first time.\n\nThe door is left open on the FOLDER side, not the roster side: creating the missing folders, and moving them when a student changes class. Both are drawn, disabled, on the Folder matching board."
+    },
+    {
+      "id": "note-paste",
+      "page": "page-1",
+      "x": 2800,
+      "y": -360,
+      "w": 520,
+      "text": "THE PASTE IS A SNAPSHOT, not a workaround.\n\nThe Doc is frozen once printing starts, so the copy the app holds is the record of what was actually handed out — and it stays true after that Doc is edited for next year. A live link would have quietly rewritten history.\n\nGoogle Docs puts real HTML on the clipboard, so headings, bold, lists and tables survive. Page breaks are what mark the boundaries between prompts; if a paste ever loses them, the splits are proposed from the repeating structure instead and moved by hand here."
+    },
+    {
+      "id": "note-prompt-choice",
+      "page": "page-1",
+      "x": 4200,
+      "y": -340,
+      "w": 520,
+      "text": "THE SAMPLE DOC HELD FIVE PROMPTS for the same essay — Alcatraz Island, The Interviews, Music, Personal Essay, Optimus Prime.\n\nSo the app asks which one this printing uses rather than guessing, and the scoring side is the same on all five. The mockups print the Alcatraz Island prompt.\n\nIf you ever want DIFFERENT prompts inside one class, the machinery is already there — the code would carry the variant — but nothing here assumes it."
+    },
+    {
+      "id": "note-sheet-departures",
+      "page": "page-1",
+      "x": 7000,
+      "y": -360,
+      "w": 640,
+      "text": "BUILT FROM THE SAMPLE DOC, verbatim — the app never rewrites the teacher's words.\n\nTHE RUBRIC IS NOT A GRID. This one is a single holistic scale (0–6 / 7 / 8 / 9) plus two flat penalties. The 4 × 4 criteria table in the earlier draft was invented, not a format: the app renders whatever is pasted and has no opinion about rubric shape.\n\nThe front carries the code; the back carries none — a second code would start a phantom packet — but it still names the student, in case a sheet comes apart from its stack.\n\nPaper, not an app screen, so it departs from the book three times on purpose: no navy flood fill (ink), stronger line colors (#f3f4f6 vanishes on paper), nothing signalled by fill alone (greyscale copiers).\n\nThe QR is a structurally faithful PLACEHOLDER at true size — real finder patterns, real version-3 density — but it does not decode."
+    },
+    {
+      "id": "note-drive-surface",
+      "page": "page-2",
+      "x": 0,
+      "y": -340,
+      "w": 520,
+      "text": "DRIVE SURFACE — Apps Script, bound to the class Sheet.\n\nThis half breaks ARCH-04 (no build step, runs from file://) on purpose, because OAuth and the Drive API cannot work from a file:// origin. The print half stays conformant. That split is the reason for two surfaces."
+    },
+    {
+      "id": "note-duplex",
+      "page": "page-2",
+      "x": 1400,
+      "y": -360,
+      "w": 520,
+      "text": "BLANK BACKS ARE KEPT AND FILED.\n\nThat one decision removed a whole screen's worth of UI. A blank side is evidence — it proves the scanner caught the page and that the student's second side really was empty — so the app never has to be RIGHT about what is blank. It only labels, and a wrong label now costs nothing but a narrow thumbnail.\n\nGone with it: the Keep/Drop buttons, the \"could not judge\" state, and the risk of quietly discarding a page someone wrote two sentences on. Blanks draw narrow purely so 28 packets stay readable."
+    },
+    {
+      "id": "note-boundary",
+      "page": "page-2",
+      "x": 2800,
+      "y": -340,
+      "w": 520,
+      "text": "THE BOUNDARY RULE the whole thing rests on: a code starts a packet, and every page after it belongs to that student until the next code.\n\nSince the code is on the front of the sheet, the sheet goes into the feeder FACE-UP, on top of that student's work. The front says so on its face — \"Keep this sheet on top of your work.\""
+    }
+  ],
+  "launch": {
+    "view": "canvas",
+    "page": "page-1"
+  }
+}

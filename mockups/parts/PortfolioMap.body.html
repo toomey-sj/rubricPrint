@@ -1,0 +1,147 @@
+<div style="width: 1280px; min-height: 880px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <header class="header">
+    <div class="header-top">
+      <div class="header-left">
+        <div class="header-logo" aria-hidden="true">📥</div>
+        <div class="header-title">
+          <h1>Rubric Filing</h1>
+          <p>Scanned work into portfolio folders</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="save-indicator saving">↻ Matching</span>
+        <button class="hdr-icon-btn" title="Portfolio folders" aria-label="Portfolio folders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+        <button class="hdr-icon-btn" title="Settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main" style="width: 100%;">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <h2>Portfolio folders</h2>
+            <p>Reading the folders already in Teaching / Portfolios and matching them to the imported roster. Done once, then only when someone joins the class.</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+            <button class="class-action-btn">Rescan Drive</button>
+            <button class="class-action-btn primary">Save 110 matches</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="date-batch-bar">
+        <div role="group" aria-label="Filter by match state" style="display: flex; gap: 5px;">
+          <button class="pill active" aria-pressed="true">All 112</button>
+          <button class="pill" aria-pressed="false">Needs a choice · 1</button>
+          <button class="pill" aria-pressed="false">Not found · 1</button>
+        </div>
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+          <span style="font-size: 11px; color: #6b7a8d; font-variant-numeric: tabular-nums;">110 matched on name</span>
+        </div>
+      </div>
+
+      <div>
+        <!-- The two that need a person come first. Everything that worked can wait. -->
+        <div class="row" style="background: #fef5ea; align-items: flex-start;">
+          <div class="avatar av9" aria-hidden="true" style="margin-top: 2px;">JM</div>
+          <div class="row-main">
+            <div class="row-name" title="Martinez, Jordan">Martinez, Jordan</div>
+            <div class="row-sub">ID 4479 · Period 1 · English 10</div>
+            <div style="display: flex; align-items: center; gap: 8px; margin-top: 8px; flex-wrap: wrap;">
+              <label class="field-label" for="jm-folder" style="white-space: nowrap;">Portfolio folder</label>
+              <select class="field-select" id="jm-folder" style="width: 420px;">
+                <option>Choose the right folder…</option>
+                <option>Portfolios / Martinez, J. — modified Sep 2, 2025</option>
+                <option>Portfolios / Martinez, Jordan R. — modified Jan 14, 2026</option>
+              </select>
+            </div>
+            <div class="field-hint" style="color: #8a6d1a; margin-top: 5px;">Two folders match this name. Pick the wrong one and a term of someone else&rsquo;s work gains a stranger&rsquo;s lab report, so this one does not guess.</div>
+          </div>
+          <span class="badge badge-warn" style="margin-top: 2px;">⚠ 2 possible</span>
+        </div>
+
+        <div class="row" style="background: #fdeaea;">
+          <div class="avatar av8" aria-hidden="true">JW</div>
+          <div class="row-main">
+            <div class="row-name" title="Whitfield, Jonah">Whitfield, Jonah</div>
+            <div class="row-sub">ID 4478 · Period 1 · English 10 · no folder in Teaching / Portfolios</div>
+          </div>
+          <span class="badge badge-bad">✕ Not found</span>
+          <div class="row-actions">
+            <button class="class-action-btn">Choose manually</button>
+          </div>
+        </div>
+
+        <div class="row">
+          <div class="avatar av1" aria-hidden="true">AO</div>
+          <div class="row-main">
+            <div class="row-name" title="Okonkwo, Amara">Okonkwo, Amara</div>
+            <div class="row-sub">Portfolios / Okonkwo, Amara</div>
+          </div>
+          <span class="badge badge-ok">✓ Matched</span>
+          <div class="row-actions"><button class="class-action-btn">Change</button></div>
+        </div>
+        <div class="row">
+          <div class="avatar av2" aria-hidden="true">MD</div>
+          <div class="row-main">
+            <div class="row-name" title="Delgado, Mateo">Delgado, Mateo</div>
+            <div class="row-sub">Portfolios / Delgado, Mateo</div>
+          </div>
+          <span class="badge badge-ok">✓ Matched</span>
+          <div class="row-actions"><button class="class-action-btn">Change</button></div>
+        </div>
+        <div class="row">
+          <div class="avatar av3" aria-hidden="true">BN</div>
+          <div class="row-main">
+            <div class="row-name" title="Nguyen, Bao">Nguyen, Bao</div>
+            <div class="row-sub">Portfolios / Nguyen, Bao</div>
+          </div>
+          <span class="badge badge-ok">✓ Matched</span>
+          <div class="row-actions"><button class="class-action-btn">Change</button></div>
+        </div>
+        <div class="row">
+          <div class="avatar av4" aria-hidden="true">RF</div>
+          <div class="row-main">
+            <div class="row-name" title="Fitzgerald, Rowan">Fitzgerald, Rowan</div>
+            <div class="row-sub">Portfolios / Fitzgerald, Rowan</div>
+          </div>
+          <span class="badge badge-ok">✓ Matched</span>
+          <div class="row-actions"><button class="class-action-btn">Change</button></div>
+        </div>
+        <div class="row">
+          <div class="avatar av7" aria-hidden="true">AS</div>
+          <div class="row-main">
+            <div class="row-name" title="Silva, Ana Lucía">Silva, Ana Lucía</div>
+            <div class="row-sub">Portfolios / Silva, Ana Lucia · matched ignoring accents</div>
+          </div>
+          <span class="badge badge-ok">✓ Matched</span>
+          <div class="row-actions"><button class="class-action-btn">Change</button></div>
+        </div>
+
+        <div class="row" style="justify-content: center; color: #6b7a8d; font-size: 11px;">105 more matched</div>
+      </div>
+
+      <!-- BTN-03 — disabled, in place, not hidden. "This exists and not right now" is a
+           different message from a control that simply is not there. -->
+      <div class="panel-body">
+        <div class="card" style="display: flex; align-items: flex-start; gap: 12px;">
+          <div style="flex: 1 1 auto; min-width: 0;">
+            <div class="section-label">Later</div>
+            <div style="font-size: 12.5px; color: #1a1a2e; line-height: 1.55; margin-top: 5px;">Right now the app reads folders you have already made. Creating the missing ones, and moving folders when a student changes class, come next — the roster always arrives by import either way, so nothing here has to change when they do.</div>
+          </div>
+          <div style="display: flex; flex-direction: column; gap: 6px; flex-shrink: 0;">
+            <button class="class-action-btn" disabled>Create 2 missing folders</button>
+            <button class="class-action-btn" disabled>Move folders</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

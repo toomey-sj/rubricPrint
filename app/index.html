@@ -1,0 +1,371 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Rubric Print</title>
+<link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
+<!--
+  ══════════════════════════════════════════════════════════════════════════════
+  Rubric Print — proof of concept.
+
+  Opens by double-clicking. No server, no network, no build step, no ES modules
+  (ARCH-04). Roster arrives as a dropped JSON file; the assignment arrives as two
+  pastes from a Google Doc. Everything below the header band is the teacher's own
+  content and is never rewritten.
+
+  THE SPLITTER CONTRACT. The routing code must land at the same place on every
+  sheet of every assignment, because tools/split.mjs crops to that rectangle:
+
+      left 674px · top 48px · 94 × 94px   (on an 816 × 1056 page)
+
+  That is why .sheet-head has a fixed height and .sheet-head-qr cannot shrink.
+  Change either and change tools/split.mjs to match.
+  ══════════════════════════════════════════════════════════════════════════════
+-->
+<style>
+/* ── BASE — lifted from the style book (mockups/parts/book.css) ─────────────── */
+* { box-sizing: border-box; margin: 0; padding: 0; }
+body {
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  background: #f0f2f5; color: #1a1a2e; font-size: 14px;
+}
+button, input, select, textarea { font-family: inherit; }
+:focus-visible { outline: 2px solid #5b6fcc; outline-offset: 2px; }
+a { color: #4a5fbb; }
+.hidden { display: none !important; }
+
+.header {
+  background: linear-gradient(135deg, #0d2137 0%, #1a3c5e 60%, #2a2a6e 100%);
+  border-bottom: 2px solid #e67e22;
+  box-shadow: 0 2px 12px rgba(0,0,0,0.3);
+  display: flex; flex-direction: column; position: sticky; top: 0; z-index: 80;
+}
+.header-top {
+  display: flex; align-items: center; justify-content: space-between;
+  min-height: 52px; gap: 12px; padding: 0 20px;
+}
+.header-left { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.header-logo {
+  width: 34px; height: 34px; background: rgba(255,255,255,0.12); border-radius: 8px;
+  display: flex; align-items: center; justify-content: center; font-size: 16px; flex-shrink: 0;
+}
+.header-title h1 { color: #fff; font-size: 16px; font-weight: 700; }
+.header-title p { color: rgba(255,255,255,0.5); font-size: 11px; margin-top: 1px; }
+.save-indicator { font-size: 11px; font-weight: 600; padding: 3px 10px; border-radius: 10px; white-space: nowrap; }
+.save-indicator.saved { background: #eafaf1; color: #1a6b3a; }
+.save-indicator.waiting { background: #eef0f4; color: #6b7a8d; }
+
+.main { padding: 20px; max-width: 1300px; margin: 0 auto; display: flex; flex-direction: column; gap: 20px; }
+.panel { background: #fff; border-radius: 14px; box-shadow: 0 1px 4px rgba(0,0,0,0.07); overflow: hidden; }
+.panel-header { padding: 16px 20px 0; }
+.panel-title-row { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; margin-bottom: 12px; }
+.panel-title h2 { font-size: 15px; font-weight: 700; }
+.panel-title p { font-size: 11px; color: #6b7a8d; margin-top: 2px; line-height: 1.5; }
+.panel-body { padding: 16px 20px; }
+.section-label { font-size: 10px; font-weight: 700; color: #6b7a8d; letter-spacing: 0.8px; text-transform: uppercase; }
+.card { background: #f8f9fc; border: 1.5px solid #e0e4f0; border-radius: 10px; padding: 12px 14px; }
+
+.row { display: flex; align-items: center; gap: 12px; padding: 9px 20px; border-bottom: 1px solid #f3f4f6; }
+.row:last-child { border-bottom: none; }
+.row-main { flex: 1 1 auto; min-width: 0; }
+.row-name { font-size: 13px; font-weight: 600; }
+.row-sub { font-size: 11px; color: #6b7a8d; margin-top: 1px; }
+.avatar {
+  width: 32px; height: 32px; border-radius: 50%; display: flex; align-items: center;
+  justify-content: center; font-size: 11px; font-weight: 800; color: #fff; flex-shrink: 0;
+}
+.av0{background:#5b6fcc}.av1{background:#27ae60}.av2{background:#e67e22}
+.av3{background:#e74c3c}.av4{background:#8e44ad}.av5{background:#0097a7}
+.av6{background:#c0392b}.av7{background:#1a6b3a}.av8{background:#2471a3}.av9{background:#d4ac0d}
+
+.class-action-btn {
+  padding: 4px 12px; border-radius: 6px; font-size: 11px; font-weight: 700;
+  border: 1.5px solid #e0e4ea; background: #fff; color: #6b7a8d; cursor: pointer; white-space: nowrap;
+}
+.class-action-btn:hover:not(:disabled) { border-color: #5b6fcc; color: #4a5fbb; }
+.class-action-btn.primary { background: #5b6fcc; border-color: #5b6fcc; color: #fff; }
+.class-action-btn.primary:hover:not(:disabled) { background: #4a5fbb; border-color: #4a5fbb; }
+.class-action-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+
+.field-row { display: flex; flex-wrap: wrap; gap: 12px; }
+.field { display: flex; flex-direction: column; gap: 5px; flex: 1 1 200px; min-width: 0; }
+.field-label { font-size: 11px; font-weight: 700; color: #6b7a8d; }
+.field-input {
+  border: 1.5px solid #e0e4ea; border-radius: 8px; padding: 8px 11px;
+  font-size: 13px; color: #1a1a2e; background: #fff; width: 100%;
+}
+.field-input:focus { border-color: #5b6fcc; }
+.field-hint { font-size: 11px; color: #6b7a8d; line-height: 1.45; }
+
+.badge {
+  display: inline-flex; align-items: center; gap: 3px; font-size: 9px; font-weight: 700;
+  letter-spacing: 0.4px; text-transform: uppercase; padding: 2px 6px; border-radius: 5px; white-space: nowrap;
+}
+.badge-ok { background: #eafaf1; color: #1a6b3a; }
+.badge-warn { background: #fef5ea; color: #8a6d1a; }
+.badge-bad { background: #fdeaea; color: #c0392b; }
+.badge-neutral { background: #eef0f4; color: #6b7a8d; }
+
+/* A slot, not a filled thing — dashed borrows its meaning from .cls-tab-add. */
+.dropzone {
+  border: 1.5px dashed #d0d8e4; border-radius: 10px; background: #f8f9fc;
+  padding: 32px 20px; text-align: center; display: flex; flex-direction: column;
+  align-items: center; gap: 10px; cursor: pointer; color: #6b7a8d; font-size: 13px; line-height: 1.5;
+}
+.dropzone.over { border-color: #5b6fcc; background: #eef2ff; color: #4a5fbb; }
+.paste-target {
+  border: 1.5px dashed #d0d8e4; border-radius: 10px; background: #fff;
+  padding: 14px 16px; min-height: 128px; max-height: 260px; overflow-y: auto;
+  font-size: 12.5px; line-height: 1.5;
+}
+.paste-target:focus { outline: 2px solid #5b6fcc; outline-offset: 2px; border-style: solid; }
+.paste-target.filled { border-style: solid; border-color: #e0e4ea; }
+.paste-target:empty::before { content: attr(data-placeholder); color: #a0aab8; }
+.paste-target h1, .paste-target h2, .paste-target h3 {
+  font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  color: #6b7a8d; margin: 10px 0 4px;
+}
+.paste-target p { margin-bottom: 7px; }
+.paste-target ul, .paste-target ol { padding-left: 20px; margin-bottom: 7px; }
+
+.preflight { display: flex; flex-direction: column; gap: 7px; }
+.preflight-line { display: flex; align-items: flex-start; gap: 8px; font-size: 12px; line-height: 1.45; }
+
+/* ══════════════════════════════════════════════════════════════════════════════
+   THE SHEET — paper, not an app screen.
+
+   Four deliberate departures from the book, each because the surface is different:
+     · no navy flood fill — the amber rule carries the identity at almost no ink
+     · line colours step up to #d0d8e4 / #6b7a8d; #f3f4f6 vanishes on paper
+     · nothing is signalled by fill alone, so it survives a greyscale copier
+     · the routing code is pure #000, not #1a1a2e, for photocopy contrast
+
+   AND THE RULE THAT COSTS A CLASS SET IF BROKEN: no background-color anywhere on
+   a .sheet. Browsers omit backgrounds unless the viewer ticks "Background
+   graphics", which is off by default. Every line here is a border or a text
+   colour. The pre-flight lints for this so it cannot creep back in.
+   ══════════════════════════════════════════════════════════════════════════════ */
+@page { size: 8.5in 11in; margin: 0; }
+
+.sheet {
+  width: 816px;
+  height: 1056px;          /* height, NOT min-height — content can never reflow   */
+  overflow: hidden;        /* so overflow clips loudly instead of shearing duplex */
+  padding: 48px;
+  display: flex; flex-direction: column;
+  font-family: 'Segoe UI', system-ui, sans-serif;
+  color: #1a1a2e;
+  page-break-after: always; break-after: page;
+}
+.sheet:last-child { page-break-after: auto; break-after: auto; }
+
+.sheet-head {
+  height: 158px; flex: 0 0 158px;       /* fixed — this is the splitter contract */
+  display: flex; align-items: flex-start; justify-content: space-between; gap: 24px;
+  border-bottom: 2px solid #e67e22;     /* a BORDER. Never a background.          */
+  overflow: hidden;
+}
+.sheet-head-id { flex: 1 1 auto; min-width: 0; overflow: hidden; }
+.sheet-name {
+  font-size: 26px; font-weight: 700; line-height: 1.15;
+  white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+}
+.sheet-meta { font-size: 13px; color: #6b7a8d; margin-top: 4px; }
+/* Wider than the code itself so the run ID never wraps, but right-ALIGNED, so the
+   symbol still ends at the page margin and its left edge stays at 674px. */
+.sheet-head-qr {
+  flex: 0 0 132px; width: 132px;        /* cannot shrink, so a long name never    */
+  display: flex; flex-direction: column; align-items: flex-end; gap: 4px;
+  text-align: right;                    /* pushes the code out of position        */
+}
+.sheet-code {
+  font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace;
+  font-size: 11px; font-weight: 600; letter-spacing: 0.4px; white-space: nowrap;
+}
+.sheet-hint { font-size: 10px; color: #6b7a8d; line-height: 1.35; }
+
+.sheet-title { margin: 18px 0; }
+.sheet-course { font-size: 10px; font-weight: 700; letter-spacing: 0.8px; text-transform: uppercase; color: #6b7a8d; }
+.sheet-topic { font-size: 22px; font-weight: 700; margin-top: 5px; }
+.sheet-due { font-size: 14px; color: #6b7a8d; margin-top: 3px; font-variant-numeric: tabular-nums; }
+
+.sheet-back-head {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  border-bottom: 2px solid #e67e22; padding-bottom: 12px; margin-bottom: 18px;
+}
+.sheet-back-name { font-size: 17px; font-weight: 700; }
+.sheet-back-meta { font-size: 13px; color: #6b7a8d; }
+
+.sheet-body { flex: 1 1 auto; overflow: hidden; font-size: 16px; line-height: 1.55; }
+.sheet-body h1, .sheet-body h2, .sheet-body h3, .sheet-body h4 {
+  font-size: 12px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
+  margin: 16px 0 7px; color: #1a1a2e;
+}
+.sheet-body > :first-child { margin-top: 0; }
+.sheet-body p { margin-bottom: 12px; max-width: 78ch; }
+.sheet-body ul, .sheet-body ol { padding-left: 22px; margin-bottom: 12px; max-width: 78ch; }
+.sheet-body li { margin-bottom: 4px; }
+.sheet-body table { border-collapse: collapse; width: 100%; margin-bottom: 12px; }
+.sheet-body th, .sheet-body td {
+  border: 1px solid #d0d8e4; padding: 7px 8px; font-size: 13px; text-align: left; vertical-align: top;
+}
+.sheet-body th { font-weight: 700; }
+
+.sheet-foot {
+  display: flex; align-items: baseline; justify-content: space-between; gap: 16px;
+  margin-top: 14px; font-size: 10px; color: #6b7a8d; flex-shrink: 0;
+}
+.sheet-foot-code { font-family: ui-monospace, 'Cascadia Mono', Consolas, monospace; letter-spacing: 0.4px; }
+
+@media screen {
+  #sheets { display: flex; flex-direction: column; align-items: center; gap: 20px; padding: 20px; }
+  .sheet { box-shadow: 0 1px 4px rgba(0,0,0,0.07); background: #fff; }
+}
+@media print {
+  .header, .main, .no-print { display: none !important; }
+  #sheets { display: block; padding: 0; }
+  .sheet { box-shadow: none; }
+  body { background: #fff; }
+}
+</style>
+</head>
+<body>
+
+<header class="header no-print">
+  <div class="header-top">
+    <div class="header-left">
+      <div class="header-logo" aria-hidden="true">📋</div>
+      <div class="header-title">
+        <h1>Rubric Print</h1>
+        <p>One personalized sheet per student</p>
+      </div>
+    </div>
+    <span class="save-indicator waiting" id="status">Waiting for a roster</span>
+  </div>
+</header>
+
+<main class="main no-print">
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title-row">
+        <div class="panel-title">
+          <div class="section-label">Step 1</div>
+          <h2 style="margin-top:3px;">Class roster</h2>
+          <p>The roster never leaves this computer. Nothing is uploaded. Columns are matched on their headers and the match is shown, so a wrong guess is visible.</p>
+        </div>
+        <button class="class-action-btn" id="rosterPick">Choose a file</button>
+      </div>
+    </div>
+    <div class="panel-body">
+      <div class="dropzone" id="rosterDrop">
+        <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8a9bb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3z"/><path d="M3 10h18M9 10v9"/></svg>
+        <div>Drop the roster CSV here, or <a href="#" id="rosterLink">choose a file</a>.<br>An export from the class spreadsheet. A roster saved as JSON also works.</div>
+      </div>
+      <input type="file" id="rosterFile" accept=".csv,.json,text/csv,application/json" class="hidden">
+    </div>
+    <div id="rosterList"></div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title-row">
+        <div class="panel-title">
+          <div class="section-label">Step 2</div>
+          <h2 style="margin-top:3px;">The sheet</h2>
+          <p>Copy each half out of your Google Doc and paste it into its side. Headings, bold, lists and tables come across; Doc fonts and colours do not.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel-body" style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;">
+      <div style="display:flex; flex-direction:column; gap:7px;">
+        <div class="section-label">Front · the prompt</div>
+        <div class="paste-target" id="pasteFront" contenteditable="true" role="textbox" aria-label="Paste the assignment prompt"
+             data-placeholder="Paste the assignment here."></div>
+      </div>
+      <div style="display:flex; flex-direction:column; gap:7px;">
+        <div class="section-label">Back · the scoring</div>
+        <div class="paste-target" id="pasteBack" contenteditable="true" role="textbox" aria-label="Paste the scoring"
+             data-placeholder="Paste the scoring here."></div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title-row">
+        <div class="panel-title">
+          <div class="section-label">Step 3</div>
+          <h2 style="margin-top:3px;">Assignment</h2>
+          <p>These fill the header on the front of every sheet.</p>
+        </div>
+      </div>
+    </div>
+    <div class="panel-body" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="field-row">
+        <div class="field" style="flex:2 1 300px;">
+          <label class="field-label" for="fCourse">Course line</label>
+          <input class="field-input" id="fCourse" value="Summer Reading Essay 1 · There There by Tommy Orange">
+        </div>
+        <div class="field">
+          <label class="field-label" for="fTopic">Topic</label>
+          <input class="field-input" id="fTopic" value="Alcatraz Island">
+        </div>
+      </div>
+      <div class="field-row">
+        <div class="field">
+          <label class="field-label" for="fDue">Due</label>
+          <input class="field-input" id="fDue" value="Sep 18, 2026">
+        </div>
+        <div class="field" style="flex:0 1 120px;">
+          <label class="field-label" for="fPoints">Points</label>
+          <input class="field-input" id="fPoints" value="9" style="font-variant-numeric:tabular-nums;">
+        </div>
+        <div class="field">
+          <label class="field-label" for="fHanded">Handed out</label>
+          <input class="field-input" id="fHanded" value="Sep 11, 2026">
+        </div>
+        <div class="field">
+          <label class="field-label" for="fRun">Run ID</label>
+          <input class="field-input" id="fRun" value="SRE1-2026-09-18" style="font-family:ui-monospace,Consolas,monospace;">
+          <div class="field-hint" id="payloadSize">&nbsp;</div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div class="panel">
+    <div class="panel-header">
+      <div class="panel-title-row">
+        <div class="panel-title">
+          <h2>Before you print</h2>
+          <p>Every sheet is checked before a page is spent.</p>
+        </div>
+        <div style="display:flex; gap:8px; flex-shrink:0;">
+          <button class="class-action-btn" id="recheck">Re-check</button>
+          <button class="class-action-btn primary" id="printBtn" disabled>Print</button>
+        </div>
+      </div>
+    </div>
+    <div class="panel-body" style="display:flex; flex-direction:column; gap:12px;">
+      <div class="preflight" id="preflight"></div>
+      <div class="card">
+        <div class="section-label">In the print dialog</div>
+        <div style="font-size:12px; line-height:1.55; margin-top:6px;">
+          Print <strong>double-sided, flipped on the long edge</strong> — on the short edge every
+          scoring side comes out upside down. Scale <strong>100%</strong>, not fit-to-page.
+          Margins <strong>none</strong>. Headers and footers <strong>off</strong>.
+        </div>
+      </div>
+    </div>
+  </div>
+
+</main>
+
+<div id="sheets"></div>
+
+<script src="qr.js"></script>
+<script src="app.js"></script>
+</body>
+</html>

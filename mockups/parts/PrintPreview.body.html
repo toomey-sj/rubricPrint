@@ -1,0 +1,139 @@
+<div style="width: 1280px; min-height: 900px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <header class="header">
+    <div class="header-top">
+      <div class="header-left">
+        <div class="header-logo" aria-hidden="true">📋</div>
+        <div class="header-title">
+          <h1>Rubric Print</h1>
+          <p>One personalized rubric per student</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="save-indicator saved">✓ Roster loaded</span>
+        <button class="hdr-icon-btn" title="Portfolio folders" aria-label="Portfolio folders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+        <button class="hdr-icon-btn" title="Settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>
+        </button>
+      </div>
+    </div>
+    <div class="header-bottom">
+      <button class="cls-tab active">Period 1 · English 10</button>
+      <button class="cls-tab">Period 2 · English 10</button>
+      <button class="cls-tab">Period 4 · English 9</button>
+      <button class="cls-tab">Period 6 · English 10</button>
+      <button class="cls-tab cls-tab-add">+</button>
+    </div>
+  </header>
+
+  <main class="main" style="width: 100%;">
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <h2>Print preview</h2>
+            <p>Period 1 · English 10 · 28 sheets, printed double-sided · 56 pages</p>
+          </div>
+          <div style="display: flex; align-items: center; gap: 8px; flex-shrink: 0;">
+            <button class="class-action-btn">Back to students</button>
+            <button class="class-action-btn primary">Print 28 sheets</button>
+          </div>
+        </div>
+      </div>
+
+      <div class="date-batch-bar">
+        <button class="class-action-btn" title="Previous student" aria-label="Previous student" style="display: flex; align-items: center; padding: 4px 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M15 18l-6-6 6-6"/></svg>
+        </button>
+        <span style="font-size: 12px; font-weight: 600; color: #1a1a2e; min-width: 210px; font-variant-numeric: tabular-nums;">Okonkwo, Amara · 1 of 28</span>
+        <button class="class-action-btn" title="Next student" aria-label="Next student" style="display: flex; align-items: center; padding: 4px 8px;">
+          <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 18l6-6-6-6"/></svg>
+        </button>
+
+        <div class="hdr-divider" style="background: #d0d8e4;"></div>
+
+        <!-- Discovered by mocking the sheet: fitting the teacher's rubric onto the back
+             IS the job, so the size lever belongs next to the thing it changes. -->
+        <span class="section-label">Text size</span>
+        <div role="group" aria-label="Sheet text size" style="display: flex; gap: 5px;">
+          <button class="toggle-btn" aria-pressed="false">Small</button>
+          <button class="toggle-btn active" aria-pressed="true">Medium</button>
+          <button class="toggle-btn" aria-pressed="false">Large</button>
+        </div>
+
+        <div style="margin-left: auto; display: flex; align-items: center; gap: 8px;">
+          <span class="badge badge-info">Alcatraz Island</span>
+          <span class="badge badge-ok">✓ Both sides fit</span>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 20px; padding: 20px;">
+
+        <div style="background: #f0f2f5; border-radius: 10px; padding: 20px; display: flex; justify-content: center; align-items: flex-start; gap: 16px; overflow: hidden;">
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+            <div style="width: 367px; height: 475px; flex-shrink: 0;">
+              <div style="width: 816px; height: 1056px; transform: scale(0.45); transform-origin: top left; box-shadow: 0 1px 4px rgba(0,0,0,0.07);">
+                <dc-import name="PrintedFront" hint-size="816px,1056px"></dc-import>
+              </div>
+            </div>
+            <span class="section-label">Front · the prompt</span>
+          </div>
+
+          <div style="display: flex; flex-direction: column; align-items: center; gap: 7px;">
+            <div style="width: 367px; height: 475px; flex-shrink: 0;">
+              <div style="width: 816px; height: 1056px; transform: scale(0.45); transform-origin: top left; box-shadow: 0 1px 4px rgba(0,0,0,0.07);">
+                <dc-import name="PrintedBack" hint-size="816px,1056px"></dc-import>
+              </div>
+            </div>
+            <span class="section-label">Back · the scoring</span>
+          </div>
+
+        </div>
+
+        <div style="display: flex; flex-direction: column; gap: 12px;">
+
+          <div class="card" style="display: flex; flex-direction: column; gap: 10px;">
+            <div class="section-label">Before you print</div>
+
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+              <span class="badge badge-ok" style="flex-shrink: 0; margin-top: 1px;">✓ Ok</span>
+              <span style="font-size: 12px; color: #1a1a2e; line-height: 1.45;">27 of 28 sheets carry a routing code.</span>
+            </div>
+
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+              <span class="badge badge-warn" style="flex-shrink: 0; margin-top: 1px;">⚠ Check</span>
+              <span style="font-size: 12px; color: #1a1a2e; line-height: 1.45;">Martinez, Jordan has no portfolio folder. That sheet prints, but the scan will land in the unmatched pile.</span>
+            </div>
+
+            <div style="display: flex; align-items: flex-start; gap: 8px;">
+              <span class="badge badge-ok" style="flex-shrink: 0; margin-top: 1px;">✓ Ok</span>
+              <span style="font-size: 12px; color: #1a1a2e; line-height: 1.45;">The prompt fits the front and the scoring fits the back, for all 28.</span>
+            </div>
+          </div>
+
+          <!-- VOICE-03 — what happens, then what to do. The long-edge clause is the one
+               that costs a whole class set when it is wrong. -->
+          <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="section-label">In the print dialog</div>
+            <div style="font-size: 12px; color: #1a1a2e; line-height: 1.5;">Print <strong>double-sided, flipped on the long edge</strong>. Flipped on the short edge, every rubric comes out upside down relative to its prompt.</div>
+            <div style="font-size: 12px; color: #1a1a2e; line-height: 1.5;">Set scale to <strong>100%</strong>, not "fit to page". Shrinking the sheet shrinks the routing code, and a code below about 2 cm stops surviving the copier.</div>
+            <div style="font-size: 12px; color: #1a1a2e; line-height: 1.5;">Turn <strong>off</strong> headers and footers so the browser does not print a URL over the code.</div>
+          </div>
+
+          <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+            <div class="section-label">Jump to</div>
+            <div style="display: flex; flex-direction: column; gap: 4px;">
+              <button class="class-action-btn" style="text-align: left; background: #eef2ff; border-color: #b0bcf0; color: #4a5fbb;">1 · Okonkwo, Amara</button>
+              <button class="class-action-btn" style="text-align: left;">2 · Delgado, Mateo</button>
+              <button class="class-action-btn" style="text-align: left; display: flex; align-items: center; justify-content: space-between; gap: 8px;"><span>8 · Martinez, Jordan</span><span class="badge badge-warn">⚠ No folder</span></button>
+            </div>
+          </div>
+
+        </div>
+      </div>
+    </div>
+  </main>
+</div>

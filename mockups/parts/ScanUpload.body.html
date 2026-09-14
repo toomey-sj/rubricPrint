@@ -1,0 +1,87 @@
+<!-- Sibling app, same suite furniture. Only the name, subtitle, favicon emoji and
+     storage prefix differ (BASE-03). It has no tab concept, so .header-bottom is
+     dropped WHOLE rather than thinned (LAYOUT-09). -->
+<div style="width: 1280px; min-height: 760px; background: #f0f2f5; display: flex; flex-direction: column;">
+
+  <header class="header">
+    <div class="header-top">
+      <div class="header-left">
+        <div class="header-logo" aria-hidden="true">📥</div>
+        <div class="header-title">
+          <h1>Rubric Filing</h1>
+          <p>Scanned work into portfolio folders</p>
+        </div>
+      </div>
+      <div class="header-actions">
+        <span class="save-indicator saved">✓ Connected</span>
+        <button class="hdr-icon-btn" title="Portfolio folders" aria-label="Portfolio folders">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+        </button>
+        <button class="hdr-icon-btn" title="Settings" aria-label="Settings">
+          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 21v-7M4 10V3M12 21v-9M12 8V3M20 21v-5M20 12V3"/><path d="M1 14h6M9 8h6M17 16h6"/></svg>
+        </button>
+      </div>
+    </div>
+  </header>
+
+  <main class="main" style="width: 100%;">
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <h2>Scanned packets</h2>
+            <p>The PDF from the copier. Nothing is filed until you have looked at the grouping.</p>
+          </div>
+        </div>
+      </div>
+      <div class="panel-body" style="display: flex; flex-direction: column; gap: 14px;">
+        <div class="dropzone">
+          <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8a9bb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 16V4m0 0L8 8m4-4l4 4"/><path d="M4 16v2a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2v-2"/></svg>
+          <div style="font-size: 13px; color: #6b7a8d; line-height: 1.5;">Drop the scanned PDF here, or <a href="#">choose a file</a>.<br>One file for the whole stack is fine.</div>
+        </div>
+
+        <div class="card" style="display: flex; flex-direction: column; gap: 8px;">
+          <div class="section-label">How pages are grouped</div>
+          <div style="font-size: 12.5px; color: #1a1a2e; line-height: 1.55;">A routing code starts a new packet. Every page after it, up to the next code, belongs to that student. The code is on the front of the rubric sheet and the rubric is on its back, so each sheet has to go in face-up, on top of that student&rsquo;s work.</div>
+          <div class="field-hint">Blank backs are kept and filed. A blank side is the proof that the scanner caught the page and that the student&rsquo;s second side really was empty — so nothing is thrown away, and the count of pages filed always matches the count scanned.</div>
+        </div>
+      </div>
+    </div>
+
+    <div class="panel">
+      <div class="panel-header">
+        <div class="panel-title-row">
+          <div class="panel-title">
+            <h2>Where it files to</h2>
+          </div>
+          <button class="class-action-btn">Change</button>
+        </div>
+      </div>
+      <div>
+        <div class="row">
+          <div class="avatar av8" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 5h18v14H3z"/><path d="M3 10h18M9 10v9"/></svg>
+          </div>
+          <div class="row-main">
+            <div class="row-name">English 2026 · class roster</div>
+            <div class="row-sub">Google Sheet · 4 classes · 112 students</div>
+          </div>
+          <span class="badge badge-ok">✓ Connected</span>
+        </div>
+        <div class="row">
+          <div class="avatar av5" aria-hidden="true">
+            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round"><path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/></svg>
+          </div>
+          <div class="row-main">
+            <div class="row-name">Teaching / Portfolios</div>
+            <div class="row-sub">110 of 112 students have a folder here</div>
+          </div>
+          <span class="badge badge-warn">⚠ 2 unmatched</span>
+          <div class="row-actions"><button class="class-action-btn">Match folders</button></div>
+        </div>
+      </div>
+    </div>
+
+  </main>
+</div>
