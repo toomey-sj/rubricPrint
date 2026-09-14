@@ -36,6 +36,28 @@
         return fail(missing.length + ' student(s) have no portfolio folder, so their ' +
           'sheets would print without a routing code. Add the column, or remove them.');
       }
+      /* The splitter matches a scanned code back to a student on the student ID,
+         so a blank or repeated one is a sheet that can never be filed — and a
+         repeat is the worse of the two, because it files one student's work into
+         another's folder with nothing looking wrong. Caught here rather than at
+         the splitter, which is a term of paper too late. A CSV import always has
+         IDs (invented above when the column is absent); a hand-edited JSON need
+         not. */
+      var idless = parsed.students.filter(function (s) { return !s.id; });
+      if (idless.length) {
+        return fail(idless.length + ' student(s) have no student ID. The routing code ' +
+          'carries it, and it is what the splitter matches on.');
+      }
+      var seenIds = {};
+      var repeated = [];
+      parsed.students.forEach(function (s) {
+        if (seenIds[s.id] && repeated.indexOf(s.id) === -1) repeated.push(s.id);
+        seenIds[s.id] = true;
+      });
+      if (repeated.length) {
+        return fail('Student ID ' + repeated.join(', ') + ' appears more than once. ' +
+          'Two students sharing an ID would file into each other’s folders.');
+      }
       state.roster = parsed;
       renderRoster();
       render();
