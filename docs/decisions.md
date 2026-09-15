@@ -348,7 +348,8 @@ was wrong in a way worth remembering, and the other became the risk §20 accepts
    Safari at an opaque origin, and Chromium keys it to the file's path, so it vanishes
    silently if the folder moves. `localStorage` does work, but student names and IDs in a
    store shared across every local HTML file is not a trade worth making for saving one
-   drag.
+   drag. — **Measured 15 Sep and half wrong: `localStorage` is NOT path-keyed, and does
+   survive the folder moving (§23). The shared-store half was right.**
 2. **The file is already the store, and it cannot go stale.** Re-reading the backup every
    time means the roster always matches the Planbook document it came from. A saved copy
    would quietly disagree the first time a student transferred out — and that is the
@@ -471,6 +472,41 @@ in a private window and can be refused for a `file://` page; `setPref` already r
 `false` and nothing currently looks. A teacher who believes a class is saved and is wrong
 finds out next September. Following Planbook's save chip: red, and it stays red, because a
 condition that flaps is a condition nobody reads.
+
+
+## 23 · What `file://` storage actually does
+
+Measured 15 Sep 2026, Chrome on Windows 11, headless with a fresh profile. §19 and §20
+both argued from assumptions about this; these are the numbers.
+
+| | |
+|---|---|
+| `localStorage` from `file://` | **works**, and persists across browser restarts |
+| Two local files at different paths | **share one store** — the origin is `file://`, not the path |
+| Moving the app's folder | **keeps the data**, for the same reason |
+| `file://` ↔ `http://localhost` | **separate stores**, as different origins always are |
+
+Two corrections this forces on things written earlier:
+
+- §19 said Chromium "keys it to the file's path, so it vanishes silently if the folder
+  moves." **That is wrong for `localStorage`** — the whole point of the measurement. It
+  remains true of IndexedDB, which is one reason not to reach for it here.
+- It also means the privacy caveat is real rather than theoretical: **any other local HTML
+  file opened in the same browser can read this app's store.** Not a reason to avoid
+  storing a roster — the boundary is the same lock on the same drawer as a paper
+  gradebook, and Planbook keeps far more sensitive data behind it — but it is a reason the
+  store holds a roster and never anything more sensitive than one.
+
+**The consequence that bites in practice:** a year built at `http://localhost` during
+development is invisible to the same app opened by double-clicking, and vice versa. They
+are not lost, they are in a different box, and the only way between the boxes is the
+export file. Which is why import is not optional bookkeeping — an export with no way back
+in is half a recovery path, and the same gap separates two computers, two browsers, and a
+teacher who has just been given a new laptop.
+
+**Not measured:** Firefox and Safari. Both have historically been stricter about
+`file://` than Chromium, and neither has been tested here. Anyone relying on this should
+assume Chrome or Edge until that changes.
 
 ---
 
