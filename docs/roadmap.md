@@ -1,6 +1,9 @@
 # Roadmap
 
-**Status: phase 1 complete. Phase 2 specified, not started.** Last updated 14 Sep 2026.
+**Status: phase 1 complete. Phase 2 part-built — store, classes, CSV import, minting,
+archive and export are in; import, add/drop, re-import and Planbook seeding are not.**
+Running on localhost (`cd tools && npm start`) until it is fit to share.
+Last updated 15 Sep 2026.
 
 Shareable view of this plan, with the reasoning attached:
 <https://claude.ai/code/artifact/02464f20-4a2d-4ce4-bc4d-b7e5f92d99fd>
@@ -105,24 +108,29 @@ Today every print starts by importing a roster. That pays a per-print cost for a
 event, on the morning when there is least time to pay it. Reasoning and the rules this has
 to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
 
-- [ ] **The year document.** One per school year: a flat `students` array, classes holding
+- [x] **The year document.** One per school year: a flat `students` array, classes holding
       `roster: [studentId]`. Planbook's shape, so moving a student is list membership and a
       future merge of the two apps is a merge rather than a translation. `schemaVersion` and
       a migration ladder **from the first commit** — retrofitting one onto data already on
       someone's disk is the expensive version of this job.
-- [ ] **Its own store, not the prefs whitelist.** `getPref`/`setPref` exist to stop a
+- [x] **Its own store, not the prefs whitelist.** `getPref`/`setPref` exist to stop a
       document being stashed in `localStorage`; this is a document, so it gets its own
       accessor and its own reasoning. **A store that is not storing says so, loudly and
       permanently** — private windows and `file://` both refuse, and a teacher who believes
       a class is saved and is wrong finds out next September.
-- [ ] **Create a class; populate it from a CSV.** Name and student ID. Folder ID optional —
+- [x] **Create a class; populate it from a CSV.** Name and student ID. Folder ID optional —
       store `null`, never a placeholder, and synthesise `placeholder-<studentId>` at print
       time so the three-field payload holds. A stored placeholder is indistinguishable from
       a real ID a year later.
-- [ ] **Generate IDs only where the field is blank, and only on confirmation.** Unique
+- [x] **Generate IDs only where the field is blank, and only on confirmation.** Unique
       across the year, readable (`2026-0042`), never regenerated. Hand back the imported
       roster with the ID column filled in — that file is both the recovery record and what
       makes the next import clean.
+- [ ] **Import a year file back in.** Export shipped without it, which makes the recovery
+      path one-way — and origins do not share storage (§23), so the export file is also the
+      ONLY bridge between localhost and the deployed site, two browsers, or two computers.
+      Reuses the migration ladder, and must validate against the shape `newYearDocument()`
+      produces before it swaps anything in. **Do this one first.**
 - [ ] **Create classes from a Planbook backup, fully populated.** Keeps Planbook's `s_…`
       ids so a later re-import reconciles instead of duplicating everyone.
 - [ ] **Add/drop.** Move a student between classes, or drop them from one. A drop leaves the
@@ -135,15 +143,15 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
       reconciled at all**, because there is nothing to match on; it is refused, pointing at
       the ID-filled file the app handed back, which is the second job that file exists to do
       (§21).
-- [ ] **Archive a class; nothing is deleted.** Archiving takes it out of the bar and keeps
+- [x] **Archive a class; nothing is deleted.** Archiving takes it out of the bar and keeps
       everything — the roster stays, and sheets already printed still split. **v1 has no
       destructive action at all**, which is worth having on purpose while the store is new
       and the export habit is not yet formed. Delete, with a confirm that counts what it
       destroys, is a later decision rather than an omission.
-- [ ] **Export the year, and say when you last did.** Once the app owns the roster, losing
+- [x] **Export the year, and say when you last did.** Once the app owns the roster, losing
       the store loses the year. Offer the file, record that it was offered, keep saying so —
       but do not hard-block, because a gate satisfied by dismissing a dialog reads as noise.
-- [ ] **Keep drop-in print, under §22's rule.** A roster that brings its own identity may
+- [x] **Keep drop-in print, under §22's rule.** A roster that brings its own identity may
       print and be forgotten; one whose identity the app minted is kept. The class list
       becomes the front door and drop-in the smaller path; a loaded drop-in roster can be
       promoted with one button, and its tab says it is unsaved.
