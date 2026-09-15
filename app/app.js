@@ -466,12 +466,14 @@
             (archived ? ' · ' + archived + ' archived' : '') + '</span>' +
         '</div>' +
         rows +
+        installRow() +
         backupRow() +
         newClassForm() +
       '</div>';
 
     wireNewClassForm();
     wireBackupRow(box);
+    wireInstallRow(box);
     bind(box, 'data-open-class', function (id) { openSavedClass(id); });
     bind(box, 'data-import-class', function (id) { pickRosterFor(id); });
     bind(box, 'data-add-class', function (id) { addStudentsTo(id); });
@@ -518,6 +520,113 @@
     bind(box, 'data-import-year', function () { pickYearFile(); });
     bind(box, 'data-export-year', function () { exportYear(); });
   }
+
+  /* ── Installing it ────────────────────────────────────────────────────────
+     NOT POLISH. iOS clears a website's storage after about seven days of not
+     using it, and a class list is exactly the thing nobody opens between one
+     essay and the next; a home-screen install is exempt from that. So for the
+     one browser where it matters most, "add to home screen" is what stops the
+     year quietly disappearing over half term (§25). Planbook learned this and
+     says so in its own data model.
+
+     A ROW, NOT A BANNER, AND NOTHING TO DISMISS. The condition it reports —
+     this app is not installed and there are classes in it to lose — is
+     standing rather than an event, and a dismissible nag either flaps or
+     teaches people to close it without reading, which is what §22 says about
+     conditions nobody reads. It sits with Backup and transfer, which is the
+     other half of the same worry, and it goes away when it stops being true.
+
+     Shown only when there is something to lose. On a first visit with no
+     classes there is nothing for eviction to take. */
+  var installPrompt = null;
+
+  function isInstalled() {
+    return (window.matchMedia &&
+        window.matchMedia('(display-mode: standalone)').matches) ||
+      navigator.standalone === true;
+  }
+
+  /* iPadOS reports itself as MacIntel, so the touch count is what separates an
+     iPad from a Mac. Wrong either way it costs a row of text, and right it is
+     the only warning the one browser that evicts storage will ever get — Safari
+     has no beforeinstallprompt to offer. */
+  function isIOS() {
+    return /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+      (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+  }
+
+  function installRow() {
+    if (isInstalled()) return '';
+    if (location.protocol === 'file:') return '';
+    if (!state.doc || !state.doc.classes.length) return '';
+
+    /* iOS FIRST, and the two never both apply: no browser on iOS fires
+       beforeinstallprompt, because every one of them is WebKit underneath. Where
+       a browser says it is iOS, the home-screen instruction is the only thing
+       that exempts its storage from being cleared — so it is the advice with a
+       deadline attached, and it goes first. */
+    if (isIOS()) {
+      return '<div class="class-row">' +
+        '<div class="class-row-main">' +
+          '<div class="class-row-name">Add this to your home screen</div>' +
+          '<div class="class-row-sub">Tap <strong style="display:inline">Share</strong>, ' +
+            'then <strong style="display:inline">Add to Home Screen</strong>. ' +
+            'iPhones and iPads clear a website’s stored data after about a week of not ' +
+            'opening it, and an app on the home screen is exempt — so this is what keeps ' +
+            'your classes here over a holiday. Take an export as well.</div>' +
+        '</div>' +
+      '</div>';
+    }
+
+    if (installPrompt) {
+      return '<div class="class-row">' +
+        '<div class="class-row-main">' +
+          '<div class="class-row-name">Install it</div>' +
+          '<div class="class-row-sub">Installed, it opens from an icon, works with the ' +
+            'network off, and keeps your classes even if the browser clears out old ' +
+            'sites. Nothing is uploaded either way.</div>' +
+        '</div>' +
+        '<div class="class-row-actions">' +
+          '<button class="class-action-btn primary" data-install="1">Install</button>' +
+        '</div>' +
+      '</div>';
+    }
+
+    return '';
+  }
+
+  function wireInstallRow(box) {
+    bind(box, 'data-install', function () {
+      if (!installPrompt) return;
+      installPrompt.prompt();
+      installPrompt.userChoice.then(function () {
+        /* Whatever was chosen, the browser will not offer this event again for
+           this visit, so the button has to go — a button that does nothing the
+           second time is worse than no button. */
+        installPrompt = null;
+        renderClassPanel();
+      });
+    });
+  }
+
+  /* The panel is redrawn only when it is showing the class list. These two fire
+     whenever the browser feels like it, and one of them landing in the middle of
+     a confirmation would wipe the question off the screen with the answer
+     half-given. */
+  function refreshPanelIfIdle() {
+    if ($('classPanel').querySelector('.class-list')) renderClassPanel();
+  }
+
+  window.addEventListener('beforeinstallprompt', function (e) {
+    e.preventDefault();
+    installPrompt = e;
+    refreshPanelIfIdle();
+  });
+
+  window.addEventListener('appinstalled', function () {
+    installPrompt = null;
+    refreshPanelIfIdle();
+  });
 
   function newClassForm() {
     return '<form class="new-class-form" id="newClassForm">' +

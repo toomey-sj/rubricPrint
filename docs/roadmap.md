@@ -1,8 +1,8 @@
 # Roadmap
 
 **Status: phase 1 complete. Phase 2 part-built — store, classes, CSV import, minting,
-archive, export, year import, add/drop, re-import and Planbook seeding are in. The
-install prompt is what is left.**
+archive, export, year import, add/drop, re-import, Planbook seeding and the install
+prompt are all in.**
 Running on localhost (`cd tools && npm start`) until it is fit to share.
 Last updated 15 Sep 2026.
 
@@ -172,6 +172,12 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
 - [x] **Export the year, and say when you last did.** Once the app owns the roster, losing
       the store loses the year. Offer the file, record that it was offered, keep saying so —
       but do not hard-block, because a gate satisfied by dismissing a dialog reads as noise.
+- [x] **Say that it should be installed.** iOS clears a website's stored data after about a
+      week of not opening it and a home-screen install is exempt, which for an app whose whole
+      value is a class list that persists is data safety rather than polish (§25). A row beside
+      Backup and transfer rather than a banner, shown only once there is a class to lose, gone
+      once it is installed.
+
 - [x] **Keep drop-in print, under §22's rule.** A roster that brings its own identity may
       print and be forgotten; one whose identity the app minted is kept. The class list
       becomes the front door and drop-in the smaller path; a loaded drop-in roster can be

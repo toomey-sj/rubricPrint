@@ -573,8 +573,16 @@ and a teacher who has no idea where the file went.
 **Installable matters more than it looks.** iOS evicts a non-installed site's storage after
 about a week of non-use; home-screen installs are exempt. For an app whose entire value is a
 class list that persists, "add to home screen" is data safety rather than polish — Planbook
-learned this and says so in its own data model. Rubric Print does not yet warn about it, and
-should.
+learned this and says so in its own data model.
+
+Built 15 Sep 2026, as **a row and not a banner**. What it reports — this app is not installed
+and there are classes in it to lose — is a standing condition rather than an event, and a
+dismissible nag either flaps or teaches people to close it unread, which is the same argument
+§22 makes about the save chip. So it sits beside Backup and transfer, which is the other half
+of the same worry, it appears only once there is a class to lose, and it goes away when it
+stops being true. Where a browser offers `beforeinstallprompt` the row installs; on iOS,
+where no browser fires that event because they are all WebKit underneath, it gives the Share →
+Add to Home Screen instruction and names the week.
 
 **`localStorage` stays, for now.** Serving makes IndexedDB available and Planbook uses it,
 so consistency argues for switching. The counter-argument is size: Planbook's year document
