@@ -8,7 +8,7 @@
      48px page padding + (720px content − 94px code column) = 674. */
   var QR_BOX = { left: 674, top: 48, size: 94 };
 
-  var state = { roster: null, planbook: null, classId: null, front: '', back: '' };
+  var state = { roster: null, planbook: null, classId: null, doc: null, front: '', back: '' };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -140,13 +140,6 @@
     return doc.classes.filter(function (c) { return c && !c.archived; });
   }
 
-  /* Planbook's own placeholder shape, so the sheets say plainly where they came
-     from and a real folder ID replacing one later is visible as a change rather
-     than a mystery. */
-  function placeholderFolder(studentId) {
-    return 'placeholder-' + studentId;
-  }
-
   function rosterFromPlanbook(doc, classId) {
     var klass = null;
     doc.classes.forEach(function (c) { if (c.id === classId) klass = c; });
@@ -167,7 +160,7 @@
         id: s.id,
         last: (s.last || '').trim(),
         first: (s.first || '').trim(),
-        folderId: placeholderFolder(s.id)
+        folderId: Y.placeholderFolder(s.id)
       });
     });
     if (dangling.length) {
@@ -222,6 +215,107 @@
       return true;
     } catch (err) {
       return false;
+    }
+  }
+
+  /* ── The year document, on disk ────────────────────────────────────────────
+     The rules about classes, students and IDs live in app/year.js, which is pure
+     so tools/year-test.mjs can exercise them without a browser. What lives HERE
+     is only the I/O — the same split tools/lib/roster.mjs has against packets.mjs.
+
+     THIS IS A DOCUMENT, NOT A PREFERENCE. It gets its own accessor rather than a
+     new key on PREF_DEFAULTS, because that whitelist exists precisely to keep
+     documents out of localStorage, and widening it to admit one is how it stops
+     working. What justifies a document living here at all is §20: the app now
+     owns the roster, and file:// has nothing better to offer. */
+  var Y = window.RubricYear;
+  var DOC_PREFIX = 'rubricprint_year_';
+
+  /* Keyed per year even though there is no year picker yet, so adding one later
+     is a feature rather than a migration of everyone's stored data. */
+  function docKey(year) { return DOC_PREFIX + year; }
+
+  /* ── Reading and writing ──────────────────────────────────────────────────
+     A STORE THAT IS NOT STORING SAYS SO, LOUDLY AND PERMANENTLY. localStorage
+     throws in a private window and can be refused for a file:// page, and a
+     teacher who believes a class is saved and is wrong does not find out until
+     next September. Following Planbook's save chip: red, and it STAYS red,
+     because a condition that flaps is a condition nobody reads. */
+  var storeBroken = null;
+
+  function storeFailure(err) {
+    storeBroken = err && err.message ? err.message : String(err);
+    render();
+    return false;
+  }
+
+  function listYears() {
+    var years = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var key = localStorage.key(i);
+        if (key && key.indexOf(DOC_PREFIX) === 0) years.push(key.slice(DOC_PREFIX.length));
+      }
+    } catch (err) {
+      storeFailure(err);
+      return [];
+    }
+    return years.sort();
+  }
+
+  function readYear(year) {
+    var raw;
+    try {
+      raw = localStorage.getItem(docKey(year));
+    } catch (err) {
+      storeFailure(err);
+      return null;
+    }
+    if (raw === null) return null;
+    return Y.migrateDocument(JSON.parse(raw));
+  }
+
+  /* rev and updatedAt are bumped before the write and rolled back if it fails, so
+     a document in memory never claims a revision that is not on disk. */
+  function writeDoc(doc) {
+    var priorRev = doc.rev;
+    var priorAt = doc.updatedAt;
+    doc.rev = priorRev + 1;
+    doc.updatedAt = new Date().toISOString();
+    try {
+      localStorage.setItem(docKey(doc.year), JSON.stringify(doc));
+    } catch (err) {
+      doc.rev = priorRev;
+      doc.updatedAt = priorAt;
+      return storeFailure(err);
+    }
+    storeBroken = null;
+    return true;
+  }
+
+  /* Created LAZILY, on the first act that needs it — a class being made, or an ID
+     being minted. Someone who only ever drops a roster in and prints never gets a
+     store at all, which is §22's rule holding at the storage layer rather than
+     only in the UI. */
+  function ensureDoc() {
+    if (state.doc) return state.doc;
+    state.doc = Y.newYearDocument(Y.currentSchoolYear());
+    writeDoc(state.doc);
+    setPref('openYear', state.doc.year);
+    return state.doc;
+  }
+
+  function bootStore() {
+    var years = listYears();
+    if (!years.length) return;
+    var preferred = getPref('openYear');
+    var year = years.indexOf(preferred) !== -1 ? preferred : years[years.length - 1];
+    try {
+      state.doc = readYear(year);
+    } catch (err) {
+      /* A document this build cannot read must not take the app down with it —
+         drop-in print still works, and the message names the year that is stuck. */
+      storeBroken = year + ': ' + err.message;
     }
   }
 
