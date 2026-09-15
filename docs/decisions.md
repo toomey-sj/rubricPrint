@@ -25,6 +25,13 @@ revisit; it is why the project has two halves.
 Anything that needs Drive belongs in the second half, or in an Apps Script beside it.
 Nothing that needs Drive may creep into the first.
 
+**Still true, and no longer the whole reason — 15 Sep 2026.** The OAuth fact above stands.
+But this section was also carrying an unstated second claim, that the *splitter* needs
+Node, and that one is measured false: the same decode ran in a browser at the same hit
+rate, 18 of 18 ([field-test-2026-09-15.md](field-test-2026-09-15.md)). Three of its four
+dependencies were browser libraries all along. So the two halves rest on the `file://`
+origin alone — serve the app and both reasons go at once. §24 says why that now matters.
+
 ## 2 · The code is the anchor; everything else varies
 
 The prompt and the rubric change every assignment. The name-and-code block never does.
@@ -507,6 +514,44 @@ teacher who has just been given a new laptop.
 **Not measured:** Firefox and Safari. Both have historically been stricter about
 `file://` than Chromium, and neither has been tested here. Anyone relying on this should
 assume Chrome or Edge until that changes.
+
+
+## 24 · Who this is for, and what that settles
+
+Decided 15 Sep 2026. **This is a standalone app, to be shared with other teachers**, who
+will print these rubrics and may also split their own scans into portfolio packets. Not a
+personal tool, and **not a Planbook module** — that was considered at length and rejected.
+
+Three things follow, and they are not preferences:
+
+**It has to be a URL.** "Conveniently share" cannot mean a zip of a folder plus `npm
+install`. That is the end of `file://` as the distribution story — not today, but as the
+destination.
+
+**The splitter has to leave the terminal.** No teacher opens a command line to file a class
+set, so a shareable product that keeps the split desk-side is a product whose second half
+nobody else can use. [field-test-2026-09-15.md](field-test-2026-09-15.md) measured whether
+it can: the same pipeline, in a browser, decoded **18 of 18** codes across the same
+108-page scan the Node splitter had just done, and `pdf-lib` wrote the packets. Three of
+the four dependencies were browser libraries all along; the fourth exists to fake a canvas.
+
+**§1's two halves lose their technical basis — but only once it is served.** §1 says OAuth
+cannot work from `file://`, which is still true. It was also silently carrying "and the
+splitter needs Node", which is now false. Serve the app and the first reason goes with the
+origin; move the decode into the page and the second goes too. §1 is not repealed here; it
+is now contingent on a choice rather than a fact, and that is a different thing to leave in
+the file unmarked.
+
+**What is NOT settled** is when. The app works today, on paper, from a file. Nothing here
+argues for stopping phase 2 to rebuild the shell — a saved class list is wanted whichever
+way the app is delivered, and `app/year.js` is pure and ports unchanged. What this changes
+is the target the remaining phases aim at: phase 6 was designed as a Node command because
+Drive could not be reached from `file://`, and that premise now has a second answer.
+
+The expensive version of this decision is making it **after** a teacher has a year stored:
+then it is a migration between storage engines across an origin change, with the export
+file as the only bridge. Which is an argument for settling the *when* before testers start,
+not for settling it this afternoon.
 
 ---
 
