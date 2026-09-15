@@ -8,8 +8,12 @@
      48px page padding + (720px content − 94px code column) = 674. */
   var QR_BOX = { left: 674, top: 48, size: 94 };
 
+  /* `pick` is what the last button asked the file input for — a roster for a
+     class, a year file, or nothing at all, which is drop-in print. One field
+     rather than a flag per destination, because two flags can disagree, and this
+     one decides whether a file is written into a class or only printed from. */
   var state = { roster: null, planbook: null, classId: null, doc: null,
-                importInto: null, front: '', back: '' };
+                pick: null, front: '', back: '' };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -22,6 +26,14 @@
      file — the origin is opaque and the request is refused as cross-origin — but
      a file the user picked or dropped reads fine. */
   function loadRoster(file) {
+    /* Taken and cleared before the read, so a pick that was cancelled cannot stay
+       armed. It used to: press Import roster for period 1, close the dialog, then
+       drop a file on the box below expecting a drop-in print — and it was written
+       into period 1 instead, silently, because both paths end in the same list of
+       names on screen. */
+    var pick = state.pick;
+    state.pick = null;
+
     var reader = new FileReader();
     reader.onload = function () {
       var text = String(reader.result);
@@ -33,16 +45,34 @@
         return fail(err.message);
       }
 
+      /* A whole year, wherever it was dropped. It is the first file a teacher
+         reaches for on a new computer, and the box below is the only dropzone on
+         the page, so recognising it here costs nothing and saves the one error
+         message that would send them hunting for a roster they do not have. */
+      if (parsed.yearExport) {
+        if (pick && pick.kind === 'class') {
+          return fail('That is a whole year — every class and every student in it. ' +
+            'Import it with Import a year file above, which says what it would ' +
+            'replace before it replaces anything. Nothing on this computer has been ' +
+            'changed.');
+        }
+        return importYearFile(text);
+      }
+
+      if (pick && pick.kind === 'year') {
+        return failYearImport('That is a roster, not a year file. The one to look for ' +
+          'is named rubric-print-<year>.json, and it holds every class at once.');
+      }
+
       /* Aimed at a class rather than dropped in. §22's rule lives here: this is
          the path that may mint identity, and it is also the only one that writes. */
-      if (state.importInto) {
+      if (pick && pick.kind === 'class') {
         if (parsed.planbook) {
-          state.importInto = null;
           return fail('That is a Planbook year backup, which holds several classes. ' +
             'Drop it on the box below to create classes from it, rather than importing ' +
             'it into one.');
         }
-        return importIntoClass(parsed, state.importInto);
+        return importIntoClass(parsed, pick.classId);
       }
 
       /* A Planbook year document holds several classes, so there is nothing to
@@ -133,7 +163,13 @@
     /* Checked BEFORE the roster shape, because a Planbook year document also has
        a top-level `students` array and would otherwise parse as a roster — then
        fail with "60 students have no portfolio folder", which is true and tells
-       you nothing about what actually happened. */
+       you nothing about what actually happened.
+
+       And this app's OWN year export is checked before Planbook, because it is a
+       year document too and satisfies looksLikePlanbook on every field. In the
+       other order it opens the class picker and prints from placeholder folders,
+       discarding the real ones the file is carrying. */
+    if (Y.looksLikeYearDocument(parsed)) return { yearExport: true };
     if (looksLikePlanbook(parsed)) return { planbook: parsed };
     parsed.source = 'JSON — a roster saved earlier';
     return parsed;
@@ -376,9 +412,11 @@
             '<div class="class-row-sub">No classes yet. Make one and its roster is kept ' +
             'on this computer, so printing later needs no file at all.</div>' +
           '</div></div>' +
+          backupRow() +
           newClassForm() +
         '</div>';
       wireNewClassForm();
+      wireBackupRow(box);
       return;
     }
 
@@ -412,14 +450,14 @@
         '<div class="class-head">' +
           '<span class="class-head-title">Your classes · ' + escapeText(state.doc.year) +
             (archived ? ' · ' + archived + ' archived' : '') + '</span>' +
-          '<button class="class-action-btn" id="exportYear">Export the year</button>' +
         '</div>' +
         rows +
+        backupRow() +
         newClassForm() +
       '</div>';
 
     wireNewClassForm();
-    $('exportYear').addEventListener('click', exportYear);
+    wireBackupRow(box);
     bind(box, 'data-open-class', function (id) { openSavedClass(id); });
     bind(box, 'data-import-class', function (id) { pickRosterFor(id); });
     bind(box, 'data-archive-class', function (id) {
@@ -430,6 +468,40 @@
       renderClassBar();
       render();
     });
+  }
+
+  /* Export exists so a year can be got back out; import is what makes that a
+     round trip rather than a one-way door (§23). They belong on one row, with
+     the single fact that says whether either has ever been used — because the
+     honest limit on export is that a browser cannot report a download was saved
+     (§21), so the app says when it last offered one and keeps saying it. */
+  function backupRow() {
+    var last = getPref('lastExportAt');
+    var stored = state.doc && state.doc.classes.length;
+    return '<div class="class-row">' +
+      '<div class="class-row-main">' +
+        '<div class="class-row-name">Backup and transfer</div>' +
+        '<div class="class-row-sub">' + (last
+          ? 'Last export offered ' + escapeText(whenText(last)) + '. That file is the ' +
+            'only way to carry this year to another browser or another computer.'
+          : 'No export taken on this computer. Classes here live in this browser at ' +
+            'this address and nowhere else, so the export file is the only copy that ' +
+            'survives a new laptop.') +
+        '</div>' +
+      '</div>' +
+      '<div class="class-row-actions">' +
+        '<button class="class-action-btn" data-import-year="1">Import a year file</button>' +
+        (stored
+          ? '<button class="class-action-btn' + (last ? '' : ' primary') +
+            '" data-export-year="1">Export the year</button>'
+          : '') +
+      '</div>' +
+    '</div>';
+  }
+
+  function wireBackupRow(box) {
+    bind(box, 'data-import-year', function () { pickYearFile(); });
+    bind(box, 'data-export-year', function () { exportYear(); });
   }
 
   function newClassForm() {
@@ -485,7 +557,17 @@
      The same file picker as drop-in, aimed at a class. `state.importInto` is what
      tells the reader which of the two it is. */
   function pickRosterFor(classId) {
-    state.importInto = classId;
+    openPicker({ kind: 'class', classId: classId });
+  }
+
+  /* The box below and the two links beside it are drop-in print: nothing saved,
+     nothing minted. They arm nothing, and they disarm whatever was armed. */
+  function pickDropIn() {
+    openPicker(null);
+  }
+
+  function openPicker(pick) {
+    state.pick = pick;
     $('rosterFile').value = '';
     $('rosterFile').click();
   }
@@ -564,7 +646,6 @@
     });
 
     var ok = writeDoc(doc);
-    state.importInto = null;
 
     /* The file goes out AT THE MOMENT the IDs exist, which is the one moment it
        is guaranteed to be complete. It cannot be verified as saved — no browser
@@ -598,10 +679,175 @@
   }
 
   function exportYear() {
-    save(JSON.stringify(state.doc, null, 2), 'application/json',
-      'rubric-print-' + state.doc.year + '.json');
-    setPref('lastExportAt', new Date().toISOString());
+    exportDocument(state.doc);
     renderClassPanel();
+  }
+
+  /* Takes the document rather than reading state, because the import confirmation
+     offers to export the year it is about to REPLACE, and that is not always the
+     year currently open. */
+  function exportDocument(doc) {
+    save(JSON.stringify(doc, null, 2), 'application/json',
+      'rubric-print-' + doc.year + '.json');
+    setPref('lastExportAt', new Date().toISOString());
+  }
+
+  /* ── Importing a year file ────────────────────────────────────────────────
+     The other half of export, and not bookkeeping: storage does not cross
+     origins (§23), so this file is the only bridge between localhost and the
+     deployed site, between two browsers, and between an old laptop and a new
+     one. Without it the recovery path is one-way.
+
+     BUILD, VALIDATE, THEN SWAP — year.js does the first two and throws, and
+     nothing here writes until it has returned. Every refusal ends with the same
+     sentence, because the one question a teacher has at that moment is whether
+     the classes they already had are still there. */
+  var UNCHANGED = ' Nothing on this computer has been changed.';
+
+  function pickYearFile() {
+    openPicker({ kind: 'year' });
+  }
+
+  function importYearFile(text) {
+    var incoming;
+    try {
+      incoming = Y.readYearDocument(text);
+    } catch (err) {
+      return failYearImport(err.message);
+    }
+    confirmYearImport(incoming);
+  }
+
+  function failYearImport(message) {
+    $('classPanel').innerHTML =
+      '<div class="notice notice-bad">' +
+        '<strong>That file was not imported.</strong>' +
+        escapeText(message) + UNCHANGED +
+        '<div class="notice-actions">' +
+          '<button class="class-action-btn primary" id="importRetry">Choose another file</button>' +
+          '<button class="class-action-btn" id="importBack">Back</button>' +
+        '</div>' +
+      '</div>';
+    $('importRetry').addEventListener('click', pickYearFile);
+    $('importBack').addEventListener('click', function () { renderClassPanel(); });
+  }
+
+  /* §6, at its most literal. An import replaces a whole year, so the confirmation
+     states what is in the file AND what is on this computer, in the same counts,
+     before either is touched. */
+  function confirmYearImport(incoming) {
+    var into = Y.describeDocument(incoming);
+
+    var existing = null;
+    var unreadable = '';
+    try {
+      existing = readYear(incoming.year);
+    } catch (err) {
+      /* A stored document this build cannot read is still a document, and
+         replacing it is still a replacement. Said out loud rather than reported
+         as "nothing is replaced", which would be false at the worst moment. */
+      unreadable = err.message;
+    }
+    var replaced = existing ? Y.describeDocument(existing) : null;
+    var others = listYears().filter(function (y) { return y !== incoming.year; });
+
+    var points = [];
+    if (replaced) {
+      points.push('<li>This <strong style="display:inline">replaces</strong> the ' +
+        escapeText(incoming.year) + ' already on this computer — ' +
+        countPhrase(replaced) + ', last changed ' + whenText(replaced.updatedAt) +
+        '. Export that first if you are not certain this file is the newer one.</li>');
+    } else if (unreadable) {
+      points.push('<li>This replaces a ' + escapeText(incoming.year) +
+        ' that is on this computer and cannot be read by this version of the app (' +
+        escapeText(unreadable) + '). Replacing it is the usual fix.</li>');
+    } else {
+      points.push('<li>There is no ' + escapeText(incoming.year) +
+        ' on this computer yet, so nothing is replaced.</li>');
+    }
+    if (others.length) {
+      points.push('<li>The other year' + (others.length === 1 ? '' : 's') +
+        ' stored here — ' + escapeText(others.join(', ')) + ' — ' +
+        (others.length === 1 ? 'is' : 'are') + ' left alone.</li>');
+    }
+    /* Said out loud because it is the whole reason the file is worth keeping: the
+       ids in it are the ids on the paper in the stack. */
+    points.push('<li>Student IDs come across exactly as the file has them. Nothing ' +
+      'is re-numbered, so sheets already printed still split (§21).</li>');
+
+    $('classPanel').innerHTML =
+      '<div class="notice">' +
+        '<strong>Import the year ' + escapeText(incoming.year) + '?</strong>' +
+        'The file holds ' + countPhrase(into) +
+        (into.archived ? ', plus ' + into.archived + ' archived class' +
+          (into.archived === 1 ? '' : 'es') : '') +
+        ', last changed ' + whenText(into.updatedAt) + '.' +
+        '<ul class="notice-list">' + points.join('') + '</ul>' +
+        '<div class="notice-actions">' +
+          '<button class="class-action-btn primary" id="yearYes">' +
+            (replaced || unreadable ? 'Replace ' + escapeText(incoming.year) : 'Import it') +
+          '</button>' +
+          (existing ? '<button class="class-action-btn" id="yearExportFirst">' +
+            'Export what is here first</button>' : '') +
+          '<button class="class-action-btn" id="yearNo">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    $('yearYes').addEventListener('click', function () { commitYearImport(incoming); });
+    $('yearNo').addEventListener('click', function () { renderClassPanel(); });
+    if (existing) {
+      $('yearExportFirst').addEventListener('click', function () {
+        exportDocument(existing);
+        /* The confirmation stays up. Taking a download is not deciding, and a
+           panel that closed itself here would read as the import having run. */
+      });
+    }
+  }
+
+  function commitYearImport(incoming) {
+    state.doc = incoming;
+    var ok = writeDoc(incoming);
+
+    /* Whatever was open belonged to the document that has just been replaced.
+       Cleared rather than re-resolved, because a class id that exists in both
+       files is a coincidence and not a match. */
+    state.planbook = null;
+    state.classId = null;
+    state.roster = null;
+    setPref('openYear', incoming.year);
+    setPref('openClassId', '');
+    $('rosterList').innerHTML = '';
+    $('status').className = 'save-indicator waiting';
+    $('status').textContent = 'Waiting for a roster';
+
+    renderClassPanel();
+    renderClassBar();
+    render();
+
+    $('classPanel').insertAdjacentHTML('afterbegin', ok
+      ? '<div class="notice"><strong>' + escapeText(incoming.year) + ' imported — ' +
+        countPhrase(Y.describeDocument(incoming)) + '.</strong>' +
+        'It is stored in this browser, at this address, and nowhere else. Opened ' +
+        'anywhere else — another browser, another computer, or the same app from a ' +
+        'file — it will not be there until this file is imported again (§23).</div>'
+      : '<div class="notice notice-bad"><strong>Imported, but not saved.</strong>' +
+        'The classes are on screen and will be gone when this tab closes, because ' +
+        'this browser is refusing to store anything. The file you imported is ' +
+        'untouched — keep it.</div>');
+  }
+
+  function countPhrase(described) {
+    return described.classes + ' class' + (described.classes === 1 ? '' : 'es') +
+      ' and ' + described.students + ' student' + (described.students === 1 ? '' : 's');
+  }
+
+  /* Date only. A time of day implies a precision that a file carried between two
+     computers does not have. */
+  function whenText(iso) {
+    var date = new Date(iso);
+    if (isNaN(date.getTime())) return 'at an unknown date';
+    return date.toLocaleDateString(undefined,
+      { year: 'numeric', month: 'short', day: 'numeric' });
   }
 
   function save(text, type, filename) {
@@ -820,7 +1066,10 @@
 
   function renderRoster() {
     var html = state.roster.students.map(function (s, i) {
-      var initials = (s.first[0] || '') + (s.last[0] || '');
+      /* charAt, not [0]: a roster JSON that someone hand-edited can carry a
+         student with no first name, and an exception here takes the whole list
+         off the screen rather than showing one odd-looking row. */
+      var initials = String(s.first || '').charAt(0) + String(s.last || '').charAt(0);
       return '<div class="row">' +
         '<div class="avatar av' + (i % 10) + '" aria-hidden="true">' + escapeText(initials) + '</div>' +
         '<div class="row-main">' +
@@ -1161,11 +1410,14 @@
     drop.addEventListener(name, function (e) { e.preventDefault(); drop.classList.remove('over'); });
   });
   drop.addEventListener('drop', function (e) {
+    /* Dropping on the box is drop-in print by definition, whatever button was
+       pressed before it. */
+    state.pick = null;
     if (e.dataTransfer.files[0]) loadRoster(e.dataTransfer.files[0]);
   });
-  drop.addEventListener('click', function () { $('rosterFile').click(); });
-  $('rosterLink').addEventListener('click', function (e) { e.preventDefault(); $('rosterFile').click(); });
-  $('rosterPick').addEventListener('click', function () { $('rosterFile').click(); });
+  drop.addEventListener('click', function () { pickDropIn(); });
+  $('rosterLink').addEventListener('click', function (e) { e.preventDefault(); pickDropIn(); });
+  $('rosterPick').addEventListener('click', function () { pickDropIn(); });
   $('rosterFile').addEventListener('change', function (e) {
     if (e.target.files[0]) loadRoster(e.target.files[0]);
   });

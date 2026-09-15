@@ -11,6 +11,7 @@
 import { createRequire } from 'node:module';
 import { fileURLToPath } from 'node:url';
 import { dirname, join } from 'node:path';
+import { readFileSync } from 'node:fs';
 
 const require = createRequire(import.meta.url);
 const HERE = dirname(fileURLToPath(import.meta.url));
@@ -59,6 +60,85 @@ console.log(`\nYear document\n${'-'.repeat(64)}`);
     'loading it would silently drop whatever that build added');
   const doc = Y.newYearDocument('2026-2027');
   check(Y.migrateDocument(doc) === doc, 'a current document passes through untouched');
+}
+
+/* ── Reading a year file back in ─────────────────────────────────────────────
+   The export file is the only bridge between two origins, two browsers or two
+   computers (§23), so the interesting cases are all the ones where it should be
+   REFUSED — and a refusal that half-applied would take the class list with it. */
+{
+  const doc = Y.newYearDocument('2026-2027');
+  const k = Y.addClass(doc, 'Period 1');
+  doc.students.push({ id: '2026-0001', last: 'Achebe', first: 'Chinua', folderId: null });
+  k.roster.push('2026-0001');
+  const file = JSON.stringify(doc);
+
+  const back = Y.readYearDocument(file);
+  check(back.year === '2026-2027' && back.classes.length === 1 && back.students.length === 1,
+    'a document the app exported reads back in');
+  check(Y.describeDocument(back).students === 1, 'and describes itself for the confirmation');
+
+  check(/not valid JSON/.test(threw(() => Y.readYearDocument('{oops')) || ''),
+    'a file that is not JSON is refused');
+  check(/not a Rubric Print year export/.test(
+    threw(() => Y.readYearDocument('{"students":[]}')) || ''),
+    'a roster JSON is refused, and named as the wrong kind of file');
+
+  /* §18's ordering rule, a second time: a Planbook backup is ALSO a year
+     document with classes and students, and its schemaVersion is its own. Sent
+     up the ladder it fails with "written by a newer version of Rubric Print",
+     which is true and tells the holder of the wrong file nothing.
+
+     Read from the real sample rather than a hand-made stand-in, because the
+     point of the check is that it recognises Planbook's actual file — a fixture
+     written from memory would agree with the code and with nothing else. */
+  const planbook = readFileSync(join(HERE, '..', 'data', 'planbook-sample-backup.json'), 'utf8');
+  check(/Planbook year backup/.test(threw(() => Y.readYearDocument(planbook)) || ''),
+    'a Planbook backup is named as a Planbook backup, not as a newer schema',
+    'the detection runs before the migration ladder');
+}
+
+/* ── Validation is against newYearDocument's own shape ───────────────────────
+   Hand-written field lists drift. This one is derived, so a field added to
+   newYearDocument() is checked for without anyone remembering to come back. */
+{
+  const base = () => {
+    const doc = Y.newYearDocument('2026-2027');
+    doc.students.push({ id: '2026-0001', last: 'Achebe', first: 'Chinua', folderId: null });
+    Y.addClass(doc, 'Period 1').roster.push('2026-0001');
+    return doc;
+  };
+  const refuse = (mutate, label, pattern) => {
+    const doc = base();
+    mutate(doc);
+    const message = threw(() => Y.readYearDocument(JSON.stringify(doc))) || '';
+    check(pattern.test(message), label, message.slice(0, 96));
+  };
+
+  refuse((d) => { d.classes = {}; }, 'classes must be an array', /should be array/);
+  refuse((d) => { delete d.lastStudentSeq; },
+    'a document with no counter is not a year export at all',
+    /not a Rubric Print year export/);
+  refuse((d) => { d.year = '2026'; }, 'a malformed year is refused',
+    /look like 2026-2027/);
+  refuse((d) => { d.students.push({ id: '2026-0001', last: 'Other', first: 'Person' }); },
+    'two students sharing an ID are refused',
+    /share the ID 2026-0001/);
+  refuse((d) => { d.classes[0].roster.push('2026-9999'); },
+    'a roster entry with nobody behind it is refused at the door',
+    /not in the file/);
+  refuse((d) => { d.classes[0].name = ''; }, 'a class with no name is refused', /has no name/);
+  refuse((d) => { d.students[0].id = ''; }, 'a student with no ID is refused',
+    /has no student ID/);
+}
+
+/* A malformed year would otherwise reach mintStudentId, which reads its first
+   half — so one file mints 2026-0001 and another mints -0001, both permanent. */
+{
+  const doc = Y.newYearDocument('2026');
+  check(Y.mintStudentId(doc) === '2026-0001',
+    'the year prefix is the first half of the year field',
+    'which is why readYearDocument insists on the shape');
 }
 
 /* ── Classes ─────────────────────────────────────────────────────────────────── */

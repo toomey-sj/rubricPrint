@@ -27,7 +27,7 @@
 /* Bump on every deploy that changes anything in SHELL. The name IS the version:
    `activate` deletes every cache that is not this one, which is what makes a
    deploy replace the shell rather than layer on top of it. */
-const CACHE = 'rubric-print-shell-v1';
+const CACHE = 'rubric-print-shell-v2';
 
 /* `./index.html` is deliberately NOT in this list, and putting it back breaks the
    app on the first navigation. Cloudflare Pages answers `/index.html` with a 308

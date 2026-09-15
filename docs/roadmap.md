@@ -1,7 +1,7 @@
 # Roadmap
 
 **Status: phase 1 complete. Phase 2 part-built — store, classes, CSV import, minting,
-archive and export are in; import, add/drop, re-import and Planbook seeding are not.**
+archive, export and year import are in; add/drop, re-import and Planbook seeding are not.**
 Running on localhost (`cd tools && npm start`) until it is fit to share.
 Last updated 15 Sep 2026.
 
@@ -126,11 +126,14 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
       across the year, readable (`2026-0042`), never regenerated. Hand back the imported
       roster with the ID column filled in — that file is both the recovery record and what
       makes the next import clean.
-- [ ] **Import a year file back in.** Export shipped without it, which makes the recovery
-      path one-way — and origins do not share storage (§23), so the export file is also the
-      ONLY bridge between localhost and the deployed site, two browsers, or two computers.
-      Reuses the migration ladder, and must validate against the shape `newYearDocument()`
-      produces before it swaps anything in. **Do this one first.**
+- [x] **Import a year file back in.** Build, validate, then swap: `readYearDocument`
+      parses, walks the migration ladder and checks the document against the shape
+      `newYearDocument()` produces — derived from a reference document rather than a
+      hand-written field list, so a field added there is checked for without anyone
+      remembering to come back. Nothing is written until it returns, and every refusal ends
+      by saying the store was not touched. Replacing a year that is already stored is the
+      first destructive action in the app, so it is proposed with **both sides counted** and
+      offers to export what it would replace: [decisions.md §26](decisions.md).
 - [ ] **Create classes from a Planbook backup, fully populated.** Keeps Planbook's `s_…`
       ids so a later re-import reconciles instead of duplicating everyone.
 - [ ] **Add/drop.** Move a student between classes, or drop them from one. A drop leaves the

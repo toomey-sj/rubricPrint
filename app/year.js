@@ -113,6 +113,171 @@
     return out;
   }
 
+  /* ── Reading a year document that came from a file ────────────────────────
+     Export shipped without an import, which left the recovery path one-way. That
+     matters more than it sounds: storage does not cross origins (§23), so this
+     file is the ONLY bridge between localhost and the deployed site, between two
+     browsers, and between a teacher's old laptop and their new one.
+
+     BUILD, VALIDATE, THEN SWAP. Nothing is written until the whole document has
+     been parsed, walked up the migration ladder, and checked against the shape
+     newYearDocument() produces. A half-applied import is worse than a refused
+     one, because the thing it half-replaced is the class list — so every refusal
+     here leaves the store exactly as it was, and says so.
+
+     The caller is app.js, which owns the confirmation and the write. */
+
+  /* Array before object, because typeof [] is 'object' and that is precisely the
+     confusion this check exists to catch. */
+  function typeOf(value) {
+    if (Array.isArray(value)) return 'array';
+    if (value === null) return 'null';
+    return typeof value;
+  }
+
+  /* OURS, not Planbook's, and one field decides it. Both are a year document
+     with schemaVersion, year, classes and students, so telling them apart needs
+     something only one of them has — and lastStudentSeq has been in
+     newYearDocument since its first commit.
+
+     DELIBERATELY NOT a shape check. Everything else about the document is
+     validateYearDocument's job to report precisely; if recognition also insisted
+     on `classes` being an array, an export with one damaged field would stop
+     being ours and get refused as somebody else's file. */
+  function looksLikeYearDocument(doc) {
+    return !!doc && typeof doc === 'object' && !Array.isArray(doc) &&
+      typeof doc.lastStudentSeq === 'number';
+  }
+
+  /* The year is not decoration: generatedIdPattern and mintStudentId both read
+     its first half, so a document whose year is "2026" or "" mints ids like
+     "2026-0001" from one file and "-0001" from another. Checked at the door
+     rather than discovered on a sheet. */
+  var YEAR_SHAPE = /^\d{4}-\d{4}$/;
+
+  function validateYearDocument(doc) {
+    if (!doc || typeof doc !== 'object' || Array.isArray(doc)) {
+      throw new Error('That file does not hold a year document at all.');
+    }
+
+    var problems = [];
+
+    /* Checked against a REFERENCE DOCUMENT rather than a hand-written list of
+       field names, so a field added to newYearDocument() is checked for here
+       without anyone having to remember to come back and add it. */
+    var reference = newYearDocument('0000-0001');
+    Object.keys(reference).forEach(function (key) {
+      var want = typeOf(reference[key]);
+      var got = typeOf(doc[key]);
+      if (got !== want) {
+        problems.push('"' + key + '" should be ' + want + ' and is ' + got);
+      }
+    });
+
+    if (typeof doc.year === 'string' && !YEAR_SHAPE.test(doc.year)) {
+      problems.push('"year" should look like 2026-2027, and is "' + doc.year + '"');
+    }
+
+    var seenClass = {};
+    (Array.isArray(doc.classes) ? doc.classes : []).forEach(function (c, i) {
+      var where = 'class ' + (i + 1);
+      if (!c || typeof c !== 'object') { problems.push(where + ' is not a class'); return; }
+      if (!c.id) problems.push(where + ' has no id');
+      if (typeof c.name !== 'string' || !c.name.trim()) problems.push(where + ' has no name');
+      if (!Array.isArray(c.roster)) problems.push(where + ' has no roster list');
+      if (c.id && seenClass[c.id]) problems.push('two classes share the id ' + c.id);
+      if (c.id) seenClass[c.id] = true;
+    });
+
+    var seenStudent = {};
+    (Array.isArray(doc.students) ? doc.students : []).forEach(function (s, i) {
+      var where = 'student ' + (i + 1);
+      if (!s || typeof s !== 'object') { problems.push(where + ' is not a student'); return; }
+      if (!s.id) problems.push(where + ' has no student ID');
+      if (!String(s.last || '').trim() && !String(s.first || '').trim()) {
+        problems.push(where + ' has no name');
+      }
+      /* The same collision roster.mjs and buildPackets check for, caught one step
+         earlier: two students on one id file into each other's folders, and
+         nothing about it looks wrong on paper. */
+      if (s.id && seenStudent[s.id]) problems.push('two students share the ID ' + s.id);
+      if (s.id) seenStudent[s.id] = true;
+    });
+
+    /* Referential integrity, refused rather than repaired. rosterFromClass
+       already refuses to print a class holding an id with nobody behind it, so
+       the only question is whether that is found now or at ten to eight on a
+       printing morning. A file the app would not print is not a file it should
+       swallow. */
+    var dangling = [];
+    (Array.isArray(doc.classes) ? doc.classes : []).forEach(function (c) {
+      if (!c || !Array.isArray(c.roster)) return;
+      c.roster.forEach(function (id) {
+        if (!seenStudent[id] && dangling.indexOf(id) === -1) dangling.push(id);
+      });
+    });
+    if (dangling.length) {
+      problems.push(dangling.length + ' roster entr' + (dangling.length === 1 ? 'y names a' :
+        'ies name') + ' student' + (dangling.length === 1 ? '' : 's') +
+        ' who are not in the file (' + dangling.slice(0, 4).join(', ') +
+        (dangling.length > 4 ? ', …' : '') + ')');
+    }
+
+    if (problems.length) {
+      throw new Error('That file is not a year document this app can read: ' +
+        problems.join('; ') + '.');
+    }
+    return doc;
+  }
+
+  /* Planbook's own fingerprint, used ONLY to say something useful when the wrong
+     file is handed over. It never admits anything: what makes a document ours is
+     looksLikeYearDocument above, and this runs only once that has said no. A
+     backup's schemaVersion is Planbook's, so without this the ladder answers
+     "written by a newer version of Rubric Print" — true, and no help at all to
+     the person holding the wrong file. §18's ordering rule, a second time. */
+  function looksLikePlanbookBackup(doc) {
+    return !!doc && typeof doc === 'object' &&
+      typeof doc.docId === 'string' &&
+      Array.isArray(doc.classes) && Array.isArray(doc.students);
+  }
+
+  /* Recognise, then ladder, then validate — and recognition is the marker field
+     alone. Deciding it is not ours because some other field is the wrong shape
+     would hand a damaged export to the branch that tells you it is a Planbook
+     backup, which is a true sentence about the wrong file. */
+  function readYearDocument(text) {
+    var parsed;
+    try {
+      parsed = JSON.parse(text);
+    } catch (err) {
+      throw new Error('That file is not valid JSON. ' + err.message);
+    }
+    if (!looksLikeYearDocument(parsed)) {
+      if (looksLikePlanbookBackup(parsed)) {
+        throw new Error('That looks like a Planbook year backup, not a Rubric Print ' +
+          'export. Drop it on the roster box instead, where it can create classes.');
+      }
+      throw new Error('That file is not a Rubric Print year export. The file to look ' +
+        'for is the one named rubric-print-<year>.json.');
+    }
+    return validateYearDocument(migrateDocument(parsed));
+  }
+
+  /* What the confirmation has to be able to state before anything is written
+     (§6): what is in the file, and — the caller supplies it — what it replaces. */
+  function describeDocument(doc) {
+    var active = activeClasses(doc);
+    return {
+      year: doc.year,
+      classes: active.length,
+      archived: doc.classes.length - active.length,
+      students: doc.students.length,
+      rev: doc.rev,
+      updatedAt: doc.updatedAt
+    };
+  }
+
   /* ── Classes ──────────────────────────────────────────────────────────────── */
 
   function activeClasses(doc) {
@@ -241,6 +406,10 @@
     placeholderFolder: placeholderFolder,
     newYearDocument: newYearDocument,
     migrateDocument: migrateDocument,
+    looksLikeYearDocument: looksLikeYearDocument,
+    validateYearDocument: validateYearDocument,
+    readYearDocument: readYearDocument,
+    describeDocument: describeDocument,
     activeClasses: activeClasses,
     classById: classById,
     addClass: addClass,

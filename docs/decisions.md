@@ -595,6 +595,51 @@ app, and the export file is the only bridge. Nobody should be told to use both.
 
 ---
 
+## 26 · Import replaces a whole year, and is the first thing here that destroys anything
+
+Decided 15 Sep 2026, when import was built. §20 says **v1 has no destructive action at
+all** — archiving keeps everything, nothing is deleted — and that is still true of every
+button except this one. Importing a year file over a year that is already on the computer
+replaces it, and the replaced document is gone.
+
+That is not an oversight and it is not fixable by merging. **Two year documents for the
+same year cannot be reconciled**, because the thing that would have to match is the whole
+document: two classes with the same name and different rosters, a student in one and not
+the other, a `lastStudentSeq` that has moved on in both. Merging would have to guess, and
+the thing it would be guessing about is which children are in which class.
+
+So the whole-document replace stands, with three guards, and the guards are the decision:
+
+- **It is proposed with both sides counted.** The confirmation states what is in the file
+  and what is on the computer — classes, students, and when each was last changed — before
+  either is touched. §6, at its most literal.
+- **It offers to export what it is about to replace**, in the same panel, and taking that
+  download does not dismiss the confirmation. Downloading is not deciding.
+- **Every refusal ends with "Nothing on this computer has been changed."** Build, validate,
+  then swap: `readYearDocument` parses, walks the migration ladder and checks the shape
+  against what `newYearDocument()` produces, and `app.js` writes nothing until it has
+  returned. A half-applied import would be worse than a refused one, because the thing it
+  half-replaced is the class list.
+
+**Recognition is one field, deliberately.** `lastStudentSeq` is what says a document is
+ours; everything else about it is `validateYearDocument`'s job to report precisely. Deciding
+"not ours" because some other field is the wrong shape would send a damaged export down the
+branch that says it is a Planbook backup — a true sentence about the wrong file.
+
+**Detection order, for the third time (§18, and the roster reader).** A Rubric Print export
+is checked for before Planbook, because it is also a year document with `schemaVersion`,
+`year`, `classes` and `students`, and it satisfies `looksLikePlanbook` on every field. In
+the other order, dropping an export on the roster box opened the class picker and printed
+from *placeholder* folder IDs, discarding the real ones the file was carrying — which no
+message anywhere would have mentioned.
+
+What is still owed is the other half: a **delete**, with a confirm that counts what it
+destroys. §20 called that a later decision rather than an omission, and it still is — but
+"no destructive action" has stopped being a description of the app, and this is where that
+changed.
+
+---
+
 ## Deliberately not built
 
 | | note |
