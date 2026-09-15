@@ -141,10 +141,13 @@ again.
 A Planbook year backup now **creates classes in the year document**, keeping both its
 student ids and its class ids so a second drop of the same file updates rather than
 duplicates (§27). Printing one of its classes without saving is still there, underneath.
-While a backup is purely a drop-in it fills the header **class bar**, and switching tabs
-keeps the paste — that is multi-class printing (§19); once its classes have been created,
-the picker is shown instead, because printing from the snapshot and printing from the saved
-class are two different things. Only two ids and a year label persist as preferences,
+The header **class bar** switches between classes and keeps the paste — that is
+multi-class printing (§19), and it serves **saved classes and a loaded backup alike**,
+never both at once: the backup holds the strip while it is on screen and hands it to the
+saved classes once it is put away. Two tabs minimum, because a strip with one tab on it is
+furniture. While a backup is purely a drop-in it also gets the remembered-class shortcut;
+once its classes have been created, the picker is shown instead, because printing from the
+snapshot and printing from the saved class are two different things. Only two ids and a year label persist as preferences,
 through a whitelist in `getPref`/`setPref` that refuses undeclared keys.
 
 **That is changing.** Phase 2 makes the app hold the class list — §8's "never authored in

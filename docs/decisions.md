@@ -324,7 +324,7 @@ data model fits before anything is committed to. It does fit: 18 students out of
 Planbook class print, verify, scan and split with no errors, and the payload is 53 of 62
 bytes.
 
-## 19 · The class bar is the loaded year, not a saved list
+## 19 · The class bar — first the loaded year, and now a saved list too
 
 Added 14 Sep 2026. The header's class strip was drawn on four mockup boards and never
 built — the one element on the whole canvas with no note pinned to it, and the notes
@@ -335,6 +335,22 @@ strip with one tab on it is furniture.
 **The tabs are the open document, held in memory.** No roster is stored anywhere. Drop
 the backup, and the classes in it become the bar; switching tabs re-reads that class out
 of the same document.
+
+**Amended 15 Sep 2026 — the title of this section was true for one day.** It said "not a
+saved list" because on 14 Sep the only thing that carried several classes was a file held
+in memory, and the note beside the mockup still said THE ROSTER IS ALWAYS IMPORTED. §20
+reversed that premise the next morning, and the guard in `renderClassBar` — *return empty
+unless a Planbook document is loaded* — outlived the reason for it. Saved classes became
+the ordinary several-class case and were the one case with no way to switch between them,
+which was noticed and then written down as a follow-up rather than fixed. That was the
+wrong call: it was not a decision standing on an argument, it was an argument that had
+already expired.
+
+**So both sources drive the strip, and never both at once.** A loaded backup wins it while
+it is on screen, because that is the document being looked at; once it is put away (§27)
+the saved classes hold it, which is the state most printing happens in. §19's own test for
+whether to draw it at all survives unchanged and applies to either: **a strip with one tab
+on it is furniture**, so it needs two.
 
 **This is also multi-class printing**, which was listed below as decided and not built.
 The assignment is scoped *above* the class, so switching tabs keeps the paste and the

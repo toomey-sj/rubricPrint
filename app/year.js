@@ -235,7 +235,13 @@
      looksLikeYearDocument above, and this runs only once that has said no. A
      backup's schemaVersion is Planbook's, so without this the ladder answers
      "written by a newer version of Rubric Print" — true, and no help at all to
-     the person holding the wrong file. §18's ordering rule, a second time. */
+     the person holding the wrong file. §18's ordering rule, a second time.
+
+     THE SCREEN NEVER REACHES THIS ONE. app.js recognises a Planbook backup
+     earlier and opens the class-creating screen instead, because the right file
+     at the wrong button is not a refusal. This is the module guarding its own
+     contract for any caller that has not done that — worth keeping, and worth
+     knowing it is not what a teacher sees. */
   function looksLikePlanbookBackup(doc) {
     return !!doc && typeof doc === 'object' &&
       typeof doc.docId === 'string' &&

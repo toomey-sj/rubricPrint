@@ -59,6 +59,29 @@
         return importYearFile(text);
       }
 
+      /* A PLANBOOK BACKUP PICKED THROUGH IMPORT A YEAR FILE is the right file at
+         the wrong button, and refusing it would be answering a question nobody
+         asked. It cannot replace the year — it is Planbook's document, not this
+         app's — but creating classes from it is almost certainly what the person
+         holding it wanted, and that screen writes nothing until it is confirmed.
+         So it opens, with a line saying what the file actually is.
+
+         This is also the only thing that reaches that offer from here:
+         parseRosterJson recognises Planbook and returns before readYearDocument
+         is ever called, so year.js's own Planbook message is the module guarding
+         its contract rather than a sentence any screen can show. */
+      if (parsed.planbook && pick && pick.kind === 'year') {
+        state.planbook = parsed.planbook;
+        state.classId = null;
+        renderClassPicker();
+        $('classPanel').insertAdjacentHTML('afterbegin',
+          '<div class="notice"><strong>That is a Planbook backup, not a Rubric Print ' +
+          'year file.</strong>It cannot replace the year on this computer, because it ' +
+          'is Planbook’s own document rather than this app’s. What it can do is create ' +
+          'these classes here, which is below.' + UNCHANGED + '</div>');
+        return;
+      }
+
       if (pick && pick.kind === 'year') {
         return failYearImport('That is a roster, not a year file. The one to look for ' +
           'is named rubric-print-<year>.json, and it holds every class at once.');
@@ -663,6 +686,9 @@
 
   function openSavedClass(classId) {
     var parsed;
+    /* No guard on classId already being open: unlike the Planbook path, this is
+       also how a roster edit redraws the print list, and skipping it there would
+       leave the sheets showing the class as it was a moment ago. */
     try {
       parsed = Y.rosterFromClass(state.doc, classId);
     } catch (err) {
@@ -1400,28 +1426,56 @@
      built: the assignment is scoped ABOVE the class, so switching tabs keeps the
      paste and the header fields and re-renders the sheets for the next period.
      Paste once, print several periods. */
+  /* TWO SOURCES, ONE STRIP, and never both at once. §19 built this for a loaded
+     Planbook document and said in its title that it was "the loaded year, not a
+     saved list" — which was true on the day, because the only thing that carried
+     several classes was a file held in memory and the note beside it still said
+     THE ROSTER IS ALWAYS IMPORTED. §20 reversed that premise the next day and
+     this guard outlived it: saved classes are now the usual several-class case,
+     and they were the one case with no way to switch between them.
+
+     A loaded backup still wins the strip while it is on screen, because that is
+     the document being looked at. Once it is put away (§27) the saved classes
+     are the only source, which is the state most printing happens in. */
   function renderClassBar() {
     var bar = $('classBar');
-    if (!state.planbook) { bar.innerHTML = ''; return; }
+    var tabs;
+    var note;
 
-    var classes = planbookClasses(state.planbook);
-    bar.innerHTML = classes.map(function (c) {
-      var n = (c.roster || []).length;
+    if (state.planbook) {
+      tabs = planbookClasses(state.planbook).map(function (c) {
+        return { id: c.id, name: c.name, count: (c.roster || []).length };
+      });
+      note = 'Planbook ' + state.planbook.year + ' · the prompt carries across';
+    } else if (state.doc) {
+      tabs = Y.activeClasses(state.doc).map(function (c) {
+        return { id: c.id, name: c.name, count: c.roster.length };
+      });
+      note = state.doc.year + ' · the prompt carries across';
+    } else {
+      tabs = [];
+    }
+
+    /* §19's own words, and they hold for either source: a strip with one tab on
+       it is furniture. The panel is where a single class gets opened. */
+    if (tabs.length < 2) { bar.innerHTML = ''; return; }
+
+    bar.innerHTML = tabs.map(function (c) {
       var active = c.id === state.classId;
       return '<button class="cls-tab' + (active ? ' active' : '') + '" ' +
         'data-tab="' + escapeText(c.id) + '"' + (active ? ' aria-current="true"' : '') +
-        (n ? '' : ' disabled') + '>' +
+        (c.count ? '' : ' disabled') + '>' +
         escapeText(c.name) +
-        '<span class="cls-tab-count">' + n + '</span>' +
+        '<span class="cls-tab-count">' + c.count + '</span>' +
       '</button>';
-    }).join('') +
-      '<span class="cls-tab-note">Planbook ' + escapeText(state.planbook.year) +
-      ' · the prompt carries across</span>';
+    }).join('') + '<span class="cls-tab-note">' + escapeText(note) + '</span>';
 
-    var tabs = bar.querySelectorAll('[data-tab]');
-    for (var i = 0; i < tabs.length; i++) {
-      tabs[i].addEventListener('click', function (e) {
-        openPlanbookClass(e.currentTarget.getAttribute('data-tab'));
+    var nodes = bar.querySelectorAll('[data-tab]');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].addEventListener('click', function (e) {
+        var id = e.currentTarget.getAttribute('data-tab');
+        if (state.planbook) openPlanbookClass(id);
+        else openSavedClass(id);
       });
     }
   }
@@ -2064,6 +2118,10 @@
      thing on screen rather than appearing a beat later. */
   bootStore();
   renderClassPanel();
+  /* Drawn at boot, which it never needed to be while only a dropped file could
+     fill it — that always arrived after a click. Saved classes are there before
+     anything is pressed. */
+  renderClassBar();
 
   /* ── Offline ───────────────────────────────────────────────────────────────
      Registered, logged on failure, and never fatal. A worker cannot register from

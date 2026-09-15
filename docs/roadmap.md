@@ -211,6 +211,11 @@ browser the install row exists for, and the one §23 did not measure — and no 
 crossed between two actual computers on its export file. The first tester's first day is
 where those get found.
 
+**One thing arrived late and was not in the list.** The class bar only ever drew itself for
+a loaded Planbook file, which was right on 14 Sep and wrong from the moment §20 made saved
+classes the usual several-class case — they were the one case with no way to switch between
+them. Both sources drive it now: [decisions.md §19](decisions.md), amended.
+
 **Out of scope:** anything touching Google. Syncing back to Planbook. A year picker — the
 `year` field goes in now because retrofitting it is a migration, but there is no second year
 to switch to yet.

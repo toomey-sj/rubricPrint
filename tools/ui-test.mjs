@@ -345,9 +345,15 @@ section('Creating classes from a Planbook backup');
     'which is what makes a later update reconcile instead of duplicating everyone');
   check(doc.lastStudentSeq === 0, 'so the counter is not spent');
   check(doc.students.every((s) => s.folderId === null), 'and folders are stored null');
-  check(await page.eval("document.getElementById('classBar').innerText") === '',
-    'the backup is put away once its classes are real',
-    'two sources for one class on screen is a question nobody can answer');
+  /* The backup is put away once its classes are real (§27) — and since the bar
+     now serves saved classes too, "put away" shows as the strip CHANGING HANDS
+     rather than emptying: the same three classes, from the document instead of
+     from the file. Two sources for one class on screen is a question nobody can
+     answer, so only one of them ever holds the strip. */
+  const barText = await page.eval("document.getElementById('classBar').innerText");
+  check(!/Planbook/.test(barText), 'the backup is put away once its classes are real');
+  check(/English 10/.test(barText) && /2026-2027 · the prompt carries across/.test(barText),
+    'and the strip is handed to the saved classes it just made');
 
   await click('[data-open-class]');
   await settle();
@@ -491,6 +497,77 @@ section('A moved student prints on the right sheet');
     built[0]);
   check(/✓ OK/.test(await page.eval("document.getElementById('preflight').innerText")),
     'and the pre-flight passes on both sides');
+}
+
+/* ══ The class bar over saved classes ════════════════════════════════════════
+   §19 built the strip for a loaded Planbook document and its guard outlived the
+   premise: saved classes became the usual several-class case and were the one
+   case with no way to switch between them. Both sources drive it now, and never
+   both at once. */
+section('Switching classes from the bar');
+{
+  const bar = () => page.eval("document.getElementById('classBar').innerText");
+
+  await plant(null);
+  check(await bar() === '', 'nothing stored, nothing in the bar');
+
+  const oneClass = YEAR();
+  oneClass.classes = [oneClass.classes[0]];
+  await plant(oneClass);
+  check(await bar() === '', 'one class is not a bar',
+    '§19’s own words: a strip with one tab on it is furniture');
+
+  await plant(YEAR());
+  let shown = await bar();
+  check(/Period 1/.test(shown) && /Period 3/.test(shown),
+    'two classes are, and it is there before anything is pressed');
+  check(/the prompt carries across/.test(shown), 'saying what switching keeps');
+  check(await page.eval(
+    "document.querySelector('#classBar [data-tab=\"c_p3\"]').disabled") === true,
+    'a class with no roster is a tab you cannot press');
+
+  await page.eval(`(function(){
+    ['pasteFront', 'pasteBack'].forEach(function (id) {
+      var box = document.getElementById(id);
+      box.innerHTML = '<p>Assignment text</p>';
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  })()`);
+  await click('#classBar [data-tab="c_p1"]');
+  await settle();
+  check(await page.eval("document.querySelectorAll('.sheet').length") === 6,
+    'pressing one builds that class’s sheets', 'three students, two pages each');
+  check(await page.eval(
+    "document.querySelector('#classBar [data-tab=\"c_p1\"]').classList.contains('active')") === true,
+    'and the tab says which one is open');
+
+  /* The whole point of the strip, and §19's reason for it: the assignment is
+     scoped above the class, so the paste survives the switch. */
+  await click('[data-move-student="2026-0002"]');
+  await settle();
+  await click('[data-move-to="c_p3"]');
+  await settle();
+  await click('#classBar [data-tab="c_p3"]');
+  await settle();
+  check(await page.eval("document.querySelectorAll('.sheet').length") === 2,
+    'switching rebuilds for the next class');
+  check(await page.eval("document.querySelector('.sheet-body').innerText") ===
+    'Assignment text', 'and the paste carries across — paste once, print several periods');
+
+  /* A loaded backup still wins the strip while it is on screen, because that is
+     the document being looked at. */
+  await page.eval("document.getElementById('rosterPick').click()");
+  await page.setFile('#rosterFile', BACKUP);
+  await settle();
+  check(/Planbook 2026-2027/.test(await bar()) === false,
+    'a backup that has not been opened yet leaves the bar alone',
+    'the picker writes nothing, so nothing has switched');
+  await click('[data-pb-print]');
+  await settle();
+  check(/Planbook 2026-2027 · the prompt carries across/.test(await bar()),
+    'printing from one of its classes hands the strip to the backup');
+  check(!/Period 1\b.*Period 3\b/.test(await bar()) || /English 10/.test(await bar()),
+    'showing the backup’s classes, not the saved ones');
 }
 
 /* The row shows only a folder's last six characters. For a student with no
