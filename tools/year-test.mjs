@@ -176,6 +176,108 @@ console.log(`\nYear document\n${'-'.repeat(64)}`);
     'a sheet already printed still has to resolve');
 }
 
+/* ── Add, drop and move ─────────────────────────────────────────────────────
+   All membership, never records. The failure that matters is a drop taking the
+   student out of the document: their sheets are in a stack carrying their ID,
+   and the splitter still has to resolve them next week. */
+{
+  const build = () => {
+    const doc = Y.newYearDocument('2026-2027');
+    const p1 = Y.addClass(doc, 'Period 1');
+    const p3 = Y.addClass(doc, 'Period 3');
+    doc.students.push(
+      { id: '2026-0001', last: 'Achebe', first: 'Chinua', folderId: null },
+      { id: '2026-0002', last: 'Baldwin', first: 'James', folderId: null });
+    p1.roster.push('2026-0001', '2026-0002');
+    return { doc, p1, p3 };
+  };
+
+  {
+    const { doc, p1 } = build();
+    const dropped = Y.dropFromClass(doc, p1.id, '2026-0001');
+    check(p1.roster.length === 1, 'a drop takes them off the roster');
+    check(doc.students.length === 2, 'and leaves the student in the document',
+      'a sheet already printed still has to resolve');
+    check(dropped.last === 'Achebe', 'and hands back who it was, for the message');
+    check(Y.classesOfStudent(doc, '2026-0001').length === 0,
+      'a student in no class at all is allowed',
+      'that is what a student who left looks like');
+  }
+
+  {
+    const { doc, p1, p3 } = build();
+    Y.moveStudent(doc, p1.id, p3.id, '2026-0001');
+    check(p1.roster.indexOf('2026-0001') === -1 && p3.roster.indexOf('2026-0001') === 0,
+      'a move is out of one list and into the other');
+    check(doc.students.length === 2, 'and the record is never touched');
+  }
+
+  /* Add first, drop second, in one call — so a move cannot half-happen and leave
+     a student in neither class. */
+  {
+    const { doc, p1, p3 } = build();
+    const gone = { ...p3, id: 'c_nothinghere' };
+    const before = p1.roster.slice();
+    check(/no longer in this document/.test(
+      threw(() => Y.moveStudent(doc, p1.id, gone.id, '2026-0001')) || ''),
+      'a move to a class that is gone is refused');
+    check(p1.roster.join(',') === before.join(','),
+      'and the class they were in is untouched',
+      'add first, so a failure leaves them where they were');
+  }
+
+  {
+    const { doc, p1, p3 } = build();
+    Y.addToClass(doc, p3.id, '2026-0001');
+    const result = Y.moveStudent(doc, p1.id, p3.id, '2026-0001');
+    check(result.alreadyThere === true && p3.roster.length === 1,
+      'moving somebody into the class they are already in is just the drop',
+      'they get put in the new section before anyone takes them out of the old');
+  }
+
+  {
+    const { doc, p1 } = build();
+    check(/already in Period 1/.test(threw(() => Y.addToClass(doc, p1.id, '2026-0001')) || ''),
+      'adding somebody twice is refused rather than duplicating the roster entry');
+    check(/no student with the ID/.test(threw(() => Y.addToClass(doc, p1.id, 'nobody')) || ''),
+      'adding an ID with no student behind it is refused');
+    check(/not in Period 1/.test(threw(() => Y.dropFromClass(doc, p1.id, 'nobody')) || ''),
+      'dropping somebody who is not there is refused');
+    check(/already in/.test(threw(() => Y.moveStudent(doc, p1.id, p1.id, '2026-0001')) || ''),
+      'moving a student to their own class is refused');
+  }
+
+  /* Adding a student appends. Sheets print in roster order and the stack is
+     handed out by walking it, so an October arrival belongs at the back. */
+  {
+    const { doc, p1 } = build();
+    doc.students.push({ id: '2026-0003', last: 'Angelou', first: 'Maya', folderId: null });
+    Y.addToClass(doc, p1.id, '2026-0003');
+    check(p1.roster[2] === '2026-0003', 'an added student goes to the end of the roster',
+      'not sorted in, which would move everyone else for the sake of one arrival');
+  }
+
+  /* The add picker: everyone in the year not already on this roster, and where
+     they are now. This is how a student dropped by mistake comes back, which is
+     what makes a drop reversible without an undo stack. */
+  {
+    const { doc, p1, p3 } = build();
+    Y.dropFromClass(doc, p1.id, '2026-0001');
+    const options = Y.candidatesFor(doc, p1.id);
+    check(options.length === 1 && options[0].student.id === '2026-0001',
+      'a dropped student is offered back');
+    check(options[0].classes.length === 0, 'and is shown as being in no class');
+
+    Y.addToClass(doc, p3.id, '2026-0001');
+    check(Y.candidatesFor(doc, p1.id)[0].classes[0].name === 'Period 3',
+      'somebody in another class is offered with the class they are in named',
+      'so adding them to a second class is a visible choice, not a surprise');
+
+    check(Y.candidatesFor(doc, p3.id).map((c) => c.student.last).join(',') === 'Baldwin',
+      'and anyone already on the roster is not offered');
+  }
+}
+
 /* ── Minting IDs ─────────────────────────────────────────────────────────────
    §21. The dangerous failures are all silent, so they are all covered here. */
 {

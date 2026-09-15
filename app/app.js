@@ -438,6 +438,11 @@
                (open ? 'Open' : 'Print for this') + '</button>' : '') +
           '<button class="class-action-btn" data-import-class="' + escapeText(c.id) + '">' +
             (n ? 'Update roster' : 'Import roster') + '</button>' +
+          /* Only once there is somebody in the year to add. On a fresh document
+             it would be a button whose only answer is "nobody". */
+          (state.doc.students.length
+            ? '<button class="class-action-btn" data-add-class="' + escapeText(c.id) +
+              '">Add students</button>' : '') +
           '<button class="class-action-btn" data-archive-class="' + escapeText(c.id) + '">' +
             'Archive</button>' +
         '</div>' +
@@ -460,6 +465,7 @@
     wireBackupRow(box);
     bind(box, 'data-open-class', function (id) { openSavedClass(id); });
     bind(box, 'data-import-class', function (id) { pickRosterFor(id); });
+    bind(box, 'data-add-class', function (id) { addStudentsTo(id); });
     bind(box, 'data-archive-class', function (id) {
       Y.archiveClass(state.doc, id);
       writeDoc(state.doc);
@@ -867,6 +873,242 @@
     return String(name).replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '') || 'class';
   }
 
+  /* ── Add and drop, on screen ──────────────────────────────────────────────
+     The rules are in year.js; what lives here is the asking. Roster membership
+     is structural, so none of it happens on one click — the class a student is
+     moved into is chosen from a list that names what they are being moved out
+     of, and a drop is confirmed with the thing that makes it safe said out loud:
+     the student stays in the document, so a sheet already printed still splits.
+
+     Every one of these writes through writeDoc, so a store that is refusing to
+     save says so rather than showing a roster change that is not on disk. */
+
+  /* A saved class, open for printing — as opposed to a Planbook tab or a
+     dropped-in roster, neither of which this app may edit. */
+  function openSavedClass_() {
+    if (!state.doc || !state.classId || state.planbook) return null;
+    return Y.classById(state.doc, state.classId);
+  }
+
+  function rosterRowActions(studentId) {
+    var klass = openSavedClass_();
+    if (!klass) return '';
+    var elsewhere = Y.activeClasses(state.doc).length > 1;
+    return '<div class="row-actions">' +
+      (elsewhere ? '<button class="class-action-btn" data-move-student="' +
+        escapeText(studentId) + '">Move</button>' : '') +
+      '<button class="class-action-btn" data-drop-student="' +
+        escapeText(studentId) + '">Drop</button>' +
+    '</div>';
+  }
+
+  function wireRosterRowActions(box) {
+    bind(box, 'data-move-student', function (id) { chooseMoveTarget(id); });
+    bind(box, 'data-drop-student', function (id) { confirmDrop(id); });
+  }
+
+  function studentLabel(student) {
+    return student ? (student.last + ', ' + student.first) : 'that student';
+  }
+
+  function confirmDrop(studentId) {
+    var klass = openSavedClass_();
+    if (!klass) return;
+    var student = Y.studentById(state.doc, studentId);
+
+    $('classPanel').innerHTML =
+      '<div class="notice">' +
+        '<strong>Drop ' + escapeText(studentLabel(student)) + ' from ' +
+          escapeText(klass.name) + '?</strong>' +
+        '<ul class="notice-list">' +
+          '<li>They stay in this year, with the same student ID. Sheets already ' +
+            'printed for them still split (§20).</li>' +
+          '<li>They stop getting a sheet when this class prints.</li>' +
+          '<li>Add them back any time with <strong style="display:inline">Add ' +
+            'students</strong> on the class — nothing is destroyed here.</li>' +
+        '</ul>' +
+        '<div class="notice-actions">' +
+          '<button class="class-action-btn primary" id="dropYes">Drop from ' +
+            escapeText(klass.name) + '</button>' +
+          '<button class="class-action-btn" id="dropNo">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    $('dropYes').addEventListener('click', function () {
+      var dropped;
+      try {
+        dropped = Y.dropFromClass(state.doc, klass.id, studentId);
+      } catch (err) {
+        return fail(err.message);
+      }
+      var ok = writeDoc(state.doc);
+      afterRosterChange(ok, escapeText(studentLabel(dropped)) + ' is no longer in ' +
+        escapeText(klass.name) + '. They are still in this year and can be added back.');
+    });
+    $('dropNo').addEventListener('click', function () { renderClassPanel(); });
+  }
+
+  /* The destination IS the confirmation — a list of classes, each naming what the
+     student is being moved out of. A dropdown that applied on change would make
+     a structural edit out of a mis-click. */
+  function chooseMoveTarget(studentId) {
+    var klass = openSavedClass_();
+    if (!klass) return;
+    var student = Y.studentById(state.doc, studentId);
+    var targets = Y.activeClasses(state.doc).filter(function (c) { return c.id !== klass.id; });
+
+    $('classPanel').innerHTML =
+      '<div class="notice">' +
+        '<strong>Move ' + escapeText(studentLabel(student)) + ' out of ' +
+          escapeText(klass.name) + ' — into which class?</strong>' +
+        'The student record does not move; only which roster they are on. Their ID ' +
+        'stays the same, so sheets already printed still split.' +
+        '<div class="notice-actions">' +
+          targets.map(function (c) {
+            return '<button class="class-action-btn" data-move-to="' + escapeText(c.id) +
+              '">' + escapeText(c.name) +
+              (c.roster.indexOf(studentId) !== -1 ? ' · already in it' : '') + '</button>';
+          }).join('') +
+          '<button class="class-action-btn" id="moveNo">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    bind($('classPanel'), 'data-move-to', function (toId) {
+      var result;
+      try {
+        result = Y.moveStudent(state.doc, klass.id, toId, studentId);
+      } catch (err) {
+        return fail(err.message);
+      }
+      var ok = writeDoc(state.doc);
+      var to = Y.classById(state.doc, toId);
+      afterRosterChange(ok, escapeText(studentLabel(result.student)) +
+        (result.alreadyThere
+          ? ' was already in ' + escapeText(to.name) + ', so they have only been taken ' +
+            'out of ' + escapeText(klass.name) + '.'
+          : ' has moved from ' + escapeText(klass.name) + ' to ' + escapeText(to.name) + '.'));
+    });
+    $('moveNo').addEventListener('click', function () { renderClassPanel(); });
+  }
+
+  /* Adding is a list with boxes rather than one student at a time, because the
+     real case is a timetable change that moved four people at once. It is also
+     the way back from a drop, which is what lets a drop exist in an app that has
+     no delete (§20). */
+  function addStudentsTo(classId) {
+    var klass = Y.classById(state.doc, classId);
+    if (!klass) return fail('That class is no longer in this document.');
+    var options = Y.candidatesFor(state.doc, classId);
+
+    if (!options.length) {
+      $('classPanel').innerHTML =
+        '<div class="notice">' +
+          '<strong>Everyone in ' + escapeText(state.doc.year) + ' is already in ' +
+            escapeText(klass.name) + '.</strong>' +
+          'To bring in a student this year has never seen, import a roster into the ' +
+          'class — that is the path that can assign an ID, and it asks first.' +
+          '<div class="notice-actions">' +
+            '<button class="class-action-btn primary" id="addImport">Import a roster</button>' +
+            '<button class="class-action-btn" id="addNo">Back</button>' +
+          '</div>' +
+        '</div>';
+      $('addImport').addEventListener('click', function () { pickRosterFor(classId); });
+      $('addNo').addEventListener('click', function () { renderClassPanel(); });
+      return;
+    }
+
+    $('classPanel').innerHTML =
+      '<div class="notice">' +
+        '<strong>Add to ' + escapeText(klass.name) + '</strong>' +
+        'Everyone in ' + escapeText(state.doc.year) + ' who is not already on this ' +
+        'roster. Where they are now is shown, because a student can be in two classes ' +
+        'at once and that should be a choice rather than a surprise.' +
+        '<ul class="notice-list" style="list-style:none; margin-left:0;">' +
+          options.map(function (o) {
+            return '<li><label style="display:flex; gap:8px; align-items:baseline;">' +
+              '<input type="checkbox" data-add-id="' + escapeText(o.student.id) + '">' +
+              '<span><strong style="display:inline">' +
+                escapeText(studentLabel(o.student)) + '</strong> · ID ' +
+                escapeText(o.student.id) + ' · ' +
+                (o.classes.length
+                  ? 'in ' + escapeText(o.classes.map(function (c) { return c.name; }).join(', '))
+                  : 'in no class') +
+              '</span></label></li>';
+          }).join('') +
+        '</ul>' +
+        '<div class="notice-actions">' +
+          '<button class="class-action-btn primary" id="addYes" disabled>Add nobody</button>' +
+          '<button class="class-action-btn" id="addNo">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    var boxes = $('classPanel').querySelectorAll('[data-add-id]');
+    var count = function () {
+      var picked = [];
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].checked) picked.push(boxes[i].getAttribute('data-add-id'));
+      }
+      return picked;
+    };
+    /* The button counts what it is about to do, and says so before it does it
+       (§6) — including when that is nothing. */
+    var recount = function () {
+      var n = count().length;
+      $('addYes').disabled = n === 0;
+      $('addYes').textContent = n === 0 ? 'Add nobody'
+        : 'Add ' + n + ' student' + (n === 1 ? '' : 's');
+    };
+    for (var i = 0; i < boxes.length; i++) boxes[i].addEventListener('change', recount);
+
+    $('addYes').addEventListener('click', function () {
+      var picked = count();
+      if (!picked.length) return;
+      var added = [];
+      try {
+        picked.forEach(function (id) { added.push(Y.addToClass(state.doc, classId, id)); });
+      } catch (err) {
+        return fail(err.message);
+      }
+      var ok = writeDoc(state.doc);
+      /* Opening the class is the point of adding to it, so the change lands on
+         the print list rather than only in the panel. */
+      state.classId = classId;
+      afterRosterChange(ok, added.length + ' student' + (added.length === 1 ? '' : 's') +
+        ' added to ' + escapeText(klass.name) + ' — ' +
+        escapeText(added.map(studentLabel).join('; ')) + '. They print at the end of ' +
+        'the stack, which is where a teacher looks for somebody who joined in October.');
+    });
+    $('addNo').addEventListener('click', function () { renderClassPanel(); });
+  }
+
+  /* One way back from every roster edit: rebuild the class panel, reopen the
+     class if it still has anybody, and say what happened. The message goes in
+     last, because openSavedClass redraws the panel it would otherwise sit in. */
+  function afterRosterChange(ok, message) {
+    var klass = state.classId ? Y.classById(state.doc, state.classId) : null;
+
+    if (klass && klass.roster.length) {
+      openSavedClass(state.classId);
+    } else {
+      /* A class emptied to nothing is not an error — it is a class waiting for a
+         roster. rosterFromClass refuses to print it, which is right, but that
+         refusal is not the message to show for a drop somebody just made. */
+      state.roster = null;
+      $('rosterList').innerHTML = '';
+      $('status').className = 'save-indicator waiting';
+      $('status').textContent = 'Waiting for a roster';
+      renderClassPanel();
+      renderClassBar();
+      render();
+    }
+
+    $('classPanel').insertAdjacentHTML('afterbegin', ok
+      ? '<div class="notice">' + message + '</div>'
+      : '<div class="notice notice-bad"><strong>Changed on screen, but not saved.</strong>' +
+        message + ' This browser is refusing to store anything, so it will be gone when ' +
+        'the tab closes.</div>');
+  }
+
   /* ── The class bar ─────────────────────────────────────────────────────────
      Drawn on four mockup boards and never built, which is how it came to
      contradict the notes pinned beside it. It is buildable now because a Planbook
@@ -1078,6 +1320,7 @@
             escapeText(String(s.folderId).slice(-6)) + '</div>' +
         '</div>' +
         '<span class="badge badge-ok">✓ Ready</span>' +
+        rosterRowActions(s.id) +
       '</div>';
     }).join('');
     /* Show what was read from which column. A wrong guess is then visible rather
@@ -1090,6 +1333,7 @@
         '<button class="class-action-btn" id="saveRoster">Save as JSON</button>' +
       '</div>' + html;
     $('saveRoster').addEventListener('click', saveRoster);
+    wireRosterRowActions($('rosterList'));
     $('status').className = 'save-indicator saved';
     $('status').textContent = '✓ ' + state.roster.students.length + ' students';
   }

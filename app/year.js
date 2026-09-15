@@ -340,6 +340,103 @@
     };
   }
 
+  /* ── Add and drop ─────────────────────────────────────────────────────────
+     Membership, not records. The whole reason the document has Planbook's shape
+     is that a class holds `roster: [studentId]`, so moving a student between two
+     classes is two list operations and the student record is never touched —
+     which is what lets a student sit in two classes without existing twice.
+
+     THE RULE UNDER ALL OF THIS (§20): dropping a student REMOVES THEM FROM THE
+     ROSTER AND KEEPS THE STUDENT. Their sheets carry their ID and may be in a
+     stack on a desk; if that work comes back in next week's scan, the splitter
+     still has to resolve it. A dropped student who vanished from the document
+     would turn a recoverable packet into `unknown_student`. */
+
+  function studentById(doc, id) {
+    var found = null;
+    doc.students.forEach(function (s) { if (s.id === id) found = s; });
+    return found;
+  }
+
+  /* Where a student is NOW — used to say, before a move, what it is moving them
+     out of, and to explain in the add picker where somebody already is. */
+  function classesOfStudent(doc, studentId) {
+    return doc.classes.filter(function (c) {
+      return c.roster.indexOf(studentId) !== -1;
+    });
+  }
+
+  /* Appended, not sorted in. Sheets print in roster order and the stack is
+     handed out by walking it, so a student who joins in October gets the last
+     sheet in the pile — which is exactly where a teacher expects to find them.
+     Re-sorting the whole class instead would move everyone else's position for
+     the sake of one arrival. */
+  function addToClass(doc, classId, studentId) {
+    var klass = classById(doc, classId);
+    if (!klass) throw new Error('That class is no longer in this document.');
+    var student = studentById(doc, studentId);
+    if (!student) {
+      throw new Error('There is no student with the ID ' + studentId + ' in this year.');
+    }
+    if (klass.roster.indexOf(studentId) !== -1) {
+      throw new Error(student.last + ', ' + student.first + ' is already in ' +
+        klass.name + '.');
+    }
+    klass.roster.push(studentId);
+    return student;
+  }
+
+  function dropFromClass(doc, classId, studentId) {
+    var klass = classById(doc, classId);
+    if (!klass) throw new Error('That class is no longer in this document.');
+    var at = klass.roster.indexOf(studentId);
+    if (at === -1) {
+      throw new Error('That student is not in ' + klass.name + '.');
+    }
+    klass.roster.splice(at, 1);
+    /* The student record stays. Deliberately no check that they are still in
+       some other class: a student in no class at all is a student who left, and
+       their ID has to keep resolving. */
+    return studentById(doc, studentId);
+  }
+
+  /* One call rather than an add and a drop at the screen, so a move can never
+     half-happen — dropped from one class and, because something threw in
+     between, in neither. Add first for the same reason. */
+  function moveStudent(doc, fromClassId, toClassId, studentId) {
+    if (fromClassId === toClassId) {
+      throw new Error('That is the class they are already in.');
+    }
+    var to = classById(doc, toClassId);
+    if (!to) throw new Error('That class is no longer in this document.');
+
+    /* Already in the destination: the move is just the drop. It happens — a
+       student is put in the new section before anyone remembers to take them
+       out of the old one. */
+    var alreadyThere = to.roster.indexOf(studentId) !== -1;
+    if (!alreadyThere) addToClass(doc, toClassId, studentId);
+    dropFromClass(doc, fromClassId, studentId);
+    return { student: studentById(doc, studentId), alreadyThere: alreadyThere };
+  }
+
+  /* Who could be added to this class: everyone in the year who is not already on
+     its roster. This is also how a student dropped by mistake comes back, which
+     is what makes a drop reversible without an undo stack — and is why v1 can
+     have a drop at all while having no delete (§20). */
+  function candidatesFor(doc, classId) {
+    var klass = classById(doc, classId);
+    if (!klass) throw new Error('That class is no longer in this document.');
+    return doc.students.filter(function (s) {
+      return klass.roster.indexOf(s.id) === -1;
+    }).map(function (s) {
+      return { student: s, classes: classesOfStudent(doc, s.id) };
+    }).sort(function (a, b) {
+      var an = (a.student.last || '') + ' ' + (a.student.first || '');
+      var bn = (b.student.last || '') + ' ' + (b.student.first || '');
+      return an.localeCompare(bn);
+    });
+  }
+
   /* ── Minting a student ID ─────────────────────────────────────────────────
      §21: an ID is permanent the moment it is printed, because it is inside the QR
      and the splitter joins on it. So these are never regenerated, they are unique
@@ -415,6 +512,12 @@
     addClass: addClass,
     archiveClass: archiveClass,
     studentsOf: studentsOf,
+    studentById: studentById,
+    classesOfStudent: classesOfStudent,
+    addToClass: addToClass,
+    dropFromClass: dropFromClass,
+    moveStudent: moveStudent,
+    candidatesFor: candidatesFor,
     rosterFromClass: rosterFromClass,
     nextGeneratedId: nextGeneratedId,
     mintStudentId: mintStudentId,

@@ -1,7 +1,7 @@
 # Roadmap
 
 **Status: phase 1 complete. Phase 2 part-built — store, classes, CSV import, minting,
-archive, export and year import are in; add/drop, re-import and Planbook seeding are not.**
+archive, export, year import and add/drop are in; re-import and Planbook seeding are not.**
 Running on localhost (`cd tools && npm start`) until it is fit to share.
 Last updated 15 Sep 2026.
 
@@ -136,8 +136,15 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
       offers to export what it would replace: [decisions.md §26](decisions.md).
 - [ ] **Create classes from a Planbook backup, fully populated.** Keeps Planbook's `s_…`
       ids so a later re-import reconciles instead of duplicating everyone.
-- [ ] **Add/drop.** Move a student between classes, or drop them from one. A drop leaves the
-      student in the document, because a sheet already printed still has to resolve.
+- [x] **Add/drop.** Move a student between classes, or drop them from one. A drop leaves the
+      student in the document, because a sheet already printed still has to resolve. All three
+      are proposed and confirmed: a move picks its destination from a list that names what the
+      student is being moved out of, and a drop says out loud that the student is kept. **Add
+      students is what makes a drop reversible**, and that is what lets a drop exist in an app
+      that still has no delete. Somebody added mid-term goes to the **end** of the roster
+      rather than being sorted in — sheets print in roster order and the stack is handed out
+      by walking it, so an October arrival belongs at the back rather than moving everyone
+      else's position.
 - [ ] **Re-import reconciles; it never replaces.** An updated CSV into an existing class
       matches on student ID, adds the new, and lists anyone in the class but not in the file
       as a *proposed* drop to confirm (§6). Replacing wholesale was rejected: it silently
