@@ -130,6 +130,44 @@ a { color: #4a5fbb; }
 .badge-bad { background: #fdeaea; color: #c0392b; }
 .badge-neutral { background: #eef0f4; color: #6b7a8d; }
 
+/* ── Saved classes ──────────────────────────────────────────────────────────
+   The class list, the store's health line, and the confirmation that stands
+   between a blank ID column and a permanent one. */
+.class-list { border: 1px solid #e3e8ef; border-radius: 10px; overflow: hidden; margin-bottom: 14px; }
+.class-row {
+  display: flex; align-items: center; gap: 12px; padding: 11px 14px;
+  border-bottom: 1px solid #eef1f6;
+}
+.class-row:last-child { border-bottom: none; }
+.class-row-main { flex: 1 1 auto; min-width: 0; }
+.class-row-name { font-size: 14px; font-weight: 700; }
+.class-row-sub { font-size: 11px; color: #6b7a8d; margin-top: 2px; }
+.class-row-actions { display: flex; gap: 6px; flex-shrink: 0; }
+.class-head {
+  display: flex; align-items: center; justify-content: space-between; gap: 12px;
+  padding: 10px 14px; background: #f8f9fb; border-bottom: 1px solid #eef1f6;
+}
+.class-head-title { font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
+  text-transform: uppercase; color: #6b7a8d; }
+.new-class-form { display: flex; gap: 8px; padding: 11px 14px; border-top: 1px solid #eef1f6; }
+.new-class-input {
+  flex: 1 1 auto; padding: 7px 10px; border: 1.5px solid #d0d8e4; border-radius: 8px;
+  font-size: 13px; font-family: inherit;
+}
+.new-class-input:focus { outline: none; border-color: #5b6fcc; }
+
+/* Amber is a standing condition, not an event that just happened. */
+.notice {
+  border: 1.5px solid #e6c068; border-left-width: 4px; border-radius: 8px;
+  padding: 12px 14px; margin-bottom: 14px; font-size: 12px; line-height: 1.55; color: #6b4e0a;
+}
+.notice strong { display: block; font-size: 13px; margin-bottom: 4px; color: #4a3a06; }
+.notice-bad { border-color: #d98b8b; color: #8a2f2f; }
+.notice-bad strong { color: #7a1f1f; }
+.notice-actions { display: flex; gap: 8px; margin-top: 10px; flex-wrap: wrap; }
+.notice-list { margin: 6px 0 0 16px; }
+.notice-list li { margin-top: 2px; }
+
 /* A slot, not a filled thing — dashed borrows its meaning from .cls-tab-add. */
 .dropzone {
   border: 1.5px dashed #d0d8e4; border-radius: 10px; background: #f8f9fc;
@@ -283,9 +321,15 @@ a { color: #4a5fbb; }
       </div>
     </div>
     <div class="panel-body">
+      <!-- Saved classes, and the store's own health. Rendered by app.js; empty
+           until there is a document, so a drop-in user never sees it. -->
+      <div id="storeWarning"></div>
+      <div id="classPanel"></div>
+
+      <!-- Drop-in stays, as the smaller path underneath (decisions.md §22). -->
       <div class="dropzone" id="rosterDrop">
         <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="#8a9bb0" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 5h18v14H3z"/><path d="M3 10h18M9 10v9"/></svg>
-        <div>Drop the roster CSV here, or <a href="#" id="rosterLink">choose a file</a>.<br>An export from the class spreadsheet. A roster saved as JSON works too — and so does a Planbook year backup, which asks which class.</div>
+        <div id="dropzoneText">Drop the roster CSV here, or <a href="#" id="rosterLink">choose a file</a>.<br>An export from the class spreadsheet. A roster saved as JSON works too — and so does a Planbook year backup, which asks which class.</div>
       </div>
       <input type="file" id="rosterFile" accept=".csv,.json,text/csv,application/json" class="hidden">
     </div>

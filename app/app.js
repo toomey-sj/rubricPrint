@@ -8,7 +8,8 @@
      48px page padding + (720px content − 94px code column) = 674. */
   var QR_BOX = { left: 674, top: 48, size: 94 };
 
-  var state = { roster: null, planbook: null, classId: null, doc: null, front: '', back: '' };
+  var state = { roster: null, planbook: null, classId: null, doc: null,
+                importInto: null, front: '', back: '' };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -30,6 +31,18 @@
         parsed = looksJson ? parseRosterJson(text) : parseRosterCsv(text);
       } catch (err) {
         return fail(err.message);
+      }
+
+      /* Aimed at a class rather than dropped in. §22's rule lives here: this is
+         the path that may mint identity, and it is also the only one that writes. */
+      if (state.importInto) {
+        if (parsed.planbook) {
+          state.importInto = null;
+          return fail('That is a Planbook year backup, which holds several classes. ' +
+            'Drop it on the box below to create classes from it, rather than importing ' +
+            'it into one.');
+        }
+        return importIntoClass(parsed, state.importInto);
       }
 
       /* A Planbook year document holds several classes, so there is nothing to
@@ -64,22 +77,24 @@
   }
 
   function commitRoster(parsed) {
-    var missing = parsed.students.filter(function (s) { return !s.folderId; });
-    if (missing.length) {
-      return fail(missing.length + ' student(s) have no portfolio folder, so their ' +
-        'sheets would print without a routing code. Add the column, or remove them.');
-    }
     /* The splitter matches a scanned code back to a student on the student ID,
        so a blank or repeated one is a sheet that can never be filed — and a
        repeat is the worse of the two, because it files one student's work into
        another's folder with nothing looking wrong. Caught here rather than at
-       the splitter, which is a term of paper too late. A CSV import always has
-       IDs (invented above when the column is absent); a hand-edited JSON need
-       not. */
+       the splitter, which is a term of paper too late.
+
+       §22 IN ONE CHECK. A roster that brings its own identity may print and be
+       forgotten; one whose identity the app would have to invent is kept. So
+       printing straight from a file needs IDs already in it, and a blank column
+       is sent to a class — where minting is confirmed, recorded, and stored. */
     var idless = parsed.students.filter(function (s) { return !s.id; });
     if (idless.length) {
-      return fail(idless.length + ' student(s) have no student ID. The routing code ' +
-        'carries it, and it is what the splitter matches on.');
+      return fail(idless.length + ' student(s) have no student ID, and the routing ' +
+        'code cannot be built without one. Make a class above and import this file ' +
+        'into it — Rubric Print will offer to assign the missing IDs and hand you ' +
+        'back the roster with them filled in. Printing straight from a file needs ' +
+        'IDs that are already in it, because nothing here would remember the ones ' +
+        'it made up.');
     }
     var seenIds = {};
     var repeated = [];
@@ -91,6 +106,15 @@
       return fail('Student ID ' + repeated.join(', ') + ' appears more than once. ' +
         'Two students sharing an ID would file into each other’s folders.');
     }
+
+    /* A missing portfolio folder is a folder that does not exist YET, not a
+       broken roster — Drive is not built, and every real roster arrives without
+       one (§20). The placeholder is synthesised here, at the last moment before
+       the code is drawn, so nothing upstream ever stores it. */
+    parsed.students.forEach(function (s) {
+      if (!s.folderId) s.folderId = Y.placeholderFolder(s.id);
+    });
+
     state.roster = parsed;
     renderRoster();
     render();
@@ -191,7 +215,7 @@
 
      Every access is wrapped: a file:// page and a private window both throw. */
   var PREF_PREFIX = 'rubricprint_';
-  var PREF_DEFAULTS = { openYear: '', openClassId: '' };
+  var PREF_DEFAULTS = { openYear: '', openClassId: '', lastExportAt: '' };
 
   function getPref(key) {
     if (!(key in PREF_DEFAULTS)) return null;
@@ -317,6 +341,284 @@
          drop-in print still works, and the message names the year that is stuck. */
       storeBroken = year + ': ' + err.message;
     }
+  }
+
+  /* ── The class panel ───────────────────────────────────────────────────────
+     The front door (§22): saved classes first, drop-in underneath. Everything
+     here writes through writeDoc, so a failed write is visible rather than a
+     class that looks saved and is not. */
+  function renderStoreWarning() {
+    var box = $('storeWarning');
+    if (!storeBroken) { box.innerHTML = ''; return; }
+    /* Red and it STAYS red. A teacher who believes a class is saved and is wrong
+       does not find out until next September. */
+    box.innerHTML = '<div class="notice notice-bad">' +
+      '<strong>Nothing is being saved on this computer.</strong>' +
+      'Classes you make here will be gone when you close the tab. The usual cause is ' +
+      'a private browsing window, which gives a page no storage at all. ' +
+      escapeText(storeBroken) +
+      '</div>';
+  }
+
+  function renderClassPanel() {
+    var box = $('classPanel');
+    renderStoreWarning();
+
+    /* Nothing stored yet: one line offering the persistent path, and the dropzone
+       below still does what it always did. */
+    if (!state.doc || !state.doc.classes.length) {
+      box.innerHTML =
+        '<div class="class-list">' +
+          '<div class="class-head">' +
+            '<span class="class-head-title">Your classes</span>' +
+          '</div>' +
+          '<div class="class-row"><div class="class-row-main">' +
+            '<div class="class-row-sub">No classes yet. Make one and its roster is kept ' +
+            'on this computer, so printing later needs no file at all.</div>' +
+          '</div></div>' +
+          newClassForm() +
+        '</div>';
+      wireNewClassForm();
+      return;
+    }
+
+    var classes = Y.activeClasses(state.doc);
+    var rows = classes.map(function (c) {
+      var n = c.roster.length;
+      var open = c.id === state.classId && !state.planbook;
+      return '<div class="class-row">' +
+        '<div class="class-row-main">' +
+          '<div class="class-row-name">' + escapeText(c.name) + '</div>' +
+          '<div class="class-row-sub">' +
+            (n ? n + ' student' + (n === 1 ? '' : 's') : 'No roster yet — import one') +
+            (open ? ' · open' : '') +
+          '</div>' +
+        '</div>' +
+        '<div class="class-row-actions">' +
+          (n ? '<button class="class-action-btn' + (open ? '' : ' primary') +
+               '" data-open-class="' + escapeText(c.id) + '">' +
+               (open ? 'Open' : 'Print for this') + '</button>' : '') +
+          '<button class="class-action-btn" data-import-class="' + escapeText(c.id) + '">' +
+            (n ? 'Update roster' : 'Import roster') + '</button>' +
+          '<button class="class-action-btn" data-archive-class="' + escapeText(c.id) + '">' +
+            'Archive</button>' +
+        '</div>' +
+      '</div>';
+    }).join('');
+
+    var archived = state.doc.classes.length - classes.length;
+    box.innerHTML =
+      '<div class="class-list">' +
+        '<div class="class-head">' +
+          '<span class="class-head-title">Your classes · ' + escapeText(state.doc.year) +
+            (archived ? ' · ' + archived + ' archived' : '') + '</span>' +
+          '<button class="class-action-btn" id="exportYear">Export the year</button>' +
+        '</div>' +
+        rows +
+        newClassForm() +
+      '</div>';
+
+    wireNewClassForm();
+    $('exportYear').addEventListener('click', exportYear);
+    bind(box, 'data-open-class', function (id) { openSavedClass(id); });
+    bind(box, 'data-import-class', function (id) { pickRosterFor(id); });
+    bind(box, 'data-archive-class', function (id) {
+      Y.archiveClass(state.doc, id);
+      writeDoc(state.doc);
+      if (state.classId === id) { state.classId = null; state.roster = null; }
+      renderClassPanel();
+      renderClassBar();
+      render();
+    });
+  }
+
+  function newClassForm() {
+    return '<form class="new-class-form" id="newClassForm">' +
+      '<input class="new-class-input" id="newClassName" type="text" ' +
+        'placeholder="Period 1 — English 10" aria-label="New class name" autocomplete="off">' +
+      '<button class="class-action-btn primary" type="submit">Add a class</button>' +
+    '</form>';
+  }
+
+  function wireNewClassForm() {
+    $('newClassForm').addEventListener('submit', function (e) {
+      e.preventDefault();
+      var name = $('newClassName').value.trim();
+      if (!name) return;
+      var doc = ensureDoc();
+      var klass = Y.addClass(doc, name);
+      writeDoc(doc);
+      renderClassPanel();
+      renderClassBar();
+      /* Straight into picking a roster: a class with nobody in it is a half-done
+         action, and the next thing anyone wants is the list of names. */
+      pickRosterFor(klass.id);
+    });
+  }
+
+  function bind(box, attr, fn) {
+    var nodes = box.querySelectorAll('[' + attr + ']');
+    for (var i = 0; i < nodes.length; i++) {
+      nodes[i].addEventListener('click', function (e) {
+        fn(e.currentTarget.getAttribute(attr));
+      });
+    }
+  }
+
+  function openSavedClass(classId) {
+    var parsed;
+    try {
+      parsed = Y.rosterFromClass(state.doc, classId);
+    } catch (err) {
+      return fail(err.message);
+    }
+    state.planbook = null;
+    state.classId = classId;
+    setPref('openYear', state.doc.year);
+    setPref('openClassId', classId);
+    commitRoster(parsed);
+    renderClassPanel();
+    renderClassBar();
+  }
+
+  /* ── Importing a roster into a class ───────────────────────────────────────
+     The same file picker as drop-in, aimed at a class. `state.importInto` is what
+     tells the reader which of the two it is. */
+  function pickRosterFor(classId) {
+    state.importInto = classId;
+    $('rosterFile').value = '';
+    $('rosterFile').click();
+  }
+
+  function importIntoClass(parsed, classId) {
+    var doc = state.doc;
+    var klass = Y.classById(doc, classId);
+    if (!klass) return fail('That class is no longer in this document.');
+
+    var blank = Y.needsIds(parsed.students);
+
+    /* §21: minting is a confirmed act, never a quiet default, because the number
+       is permanent the moment it reaches paper. The confirmation states what it
+       is about to do and how many, before anything is written. */
+    if (blank.length) {
+      return confirmMinting(parsed, klass, blank.length);
+    }
+    commitImport(parsed, klass, false);
+  }
+
+  function confirmMinting(parsed, klass, count) {
+    $('classPanel').innerHTML =
+      '<div class="notice">' +
+        '<strong>' + count + ' student' + (count === 1 ? ' has' : 's have') +
+          ' no student ID.</strong>' +
+        'Rubric Print can assign one to each — <strong style="display:inline">' +
+        escapeText(Y.nextGeneratedId(state.doc)) + '</strong> onwards, counting up.' +
+        '<ul class="notice-list">' +
+          '<li>The ID is printed inside the routing code, so it is <strong ' +
+            'style="display:inline">permanent</strong>. A sheet already handed out ' +
+            'cannot be re-numbered.</li>' +
+          '<li>It is what the splitter matches a scanned page back to a student on.</li>' +
+          '<li>You will get your roster back with the ID column filled in. <strong ' +
+            'style="display:inline">Keep that file.</strong> It is the only way to ' +
+            'rebuild the list if this computer is lost, and importing it next time ' +
+            'means nothing is assigned twice.</li>' +
+        '</ul>' +
+        '<div class="notice-actions">' +
+          '<button class="class-action-btn primary" id="mintYes">Assign ' + count +
+            ' ID' + (count === 1 ? '' : 's') + ' and import</button>' +
+          '<button class="class-action-btn" id="mintNo">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    $('mintYes').addEventListener('click', function () {
+      commitImport(parsed, klass, true);
+    });
+    $('mintNo').addEventListener('click', function () {
+      renderClassPanel();
+    });
+  }
+
+  function commitImport(parsed, klass, minted) {
+    var doc = state.doc;
+    var byId = {};
+    doc.students.forEach(function (s) { byId[s.id] = s; });
+
+    var added = 0;
+    var handBack = [];
+    parsed.students.forEach(function (row) {
+      var id = row.id || Y.mintStudentId(doc);
+      if (!byId[id]) {
+        /* folderId is stored as NULL when absent. The placeholder is synthesised
+           at print time, so a stored value can never be read later as a real
+           Drive ID (§20). */
+        var student = {
+          id: id, last: row.last, first: row.first,
+          folderId: row.folderId || null
+        };
+        doc.students.push(student);
+        byId[id] = student;
+      }
+      if (klass.roster.indexOf(id) === -1) { klass.roster.push(id); added++; }
+      handBack.push({ id: id, last: row.last, first: row.first,
+                      folderId: byId[id].folderId });
+    });
+
+    var ok = writeDoc(doc);
+    state.importInto = null;
+
+    /* The file goes out AT THE MOMENT the IDs exist, which is the one moment it
+       is guaranteed to be complete. It cannot be verified as saved — no browser
+       reports that — so it is offered and said out loud, not gated on. */
+    if (minted) downloadRoster(handBack, klass.name);
+
+    renderClassPanel();
+    renderClassBar();
+    openSavedClass(klass.id);
+    if (minted && ok) {
+      $('classPanel').insertAdjacentHTML('afterbegin',
+        '<div class="notice"><strong>Your roster has been downloaded with the IDs ' +
+        'filled in.</strong>Keep it somewhere you will find it again. It is the only ' +
+        'record of which ID belongs to which student if this computer is lost, and ' +
+        'importing that file next time is what stops anyone being assigned a second ' +
+        'ID.</div>');
+    }
+    return added;
+  }
+
+  /* CSV out, because CSV is what came in and what a spreadsheet reads. Same
+     columns the importer matches on, so the file round-trips. */
+  function downloadRoster(students, className) {
+    var lines = ['"Last, First",Student ID,Period,Portfolio folder ID'];
+    students.forEach(function (s) {
+      lines.push('"' + s.last + ', ' + s.first + '",' + s.id + ',"' + className + '",' +
+        (s.folderId || ''));
+    });
+    save(lines.join('\n'), 'text/csv',
+      slugForFile(className) + '-roster-with-ids.csv');
+  }
+
+  function exportYear() {
+    save(JSON.stringify(state.doc, null, 2), 'application/json',
+      'rubric-print-' + state.doc.year + '.json');
+    setPref('lastExportAt', new Date().toISOString());
+    renderClassPanel();
+  }
+
+  function save(text, type, filename) {
+    var blob = new Blob([text], { type: type });
+    var link = document.createElement('a');
+    link.href = URL.createObjectURL(blob);
+    link.download = filename;
+    document.body.appendChild(link);
+    link.click();
+    link.remove();
+    /* Revoked on a later turn, not in the same task as the click — Safari has
+       historically cancelled the download when it is revoked immediately. */
+    setTimeout(function () { URL.revokeObjectURL(link.href); }, 60000);
+  }
+
+  function slugForFile(name) {
+    return String(name).replace(/[^\w-]+/g, '-').replace(/^-+|-+$/g, '') || 'class';
   }
 
   /* ── The class bar ─────────────────────────────────────────────────────────
@@ -460,10 +762,11 @@
       });
     });
 
-    if (map.folderId === undefined) {
-      throw new Error('No portfolio-folder column found. Columns read: ' +
-        headers.join(', ') + '.');
-    }
+    /* The folder column is OPTIONAL (§20). It was required back when the splitter
+       joined on folderId and a roster without one could not be routed at all;
+       the join is studentId now, so a missing folder is a portfolio that does not
+       exist yet rather than a broken roster. Drive is not built, and demanding a
+       column for it would have made every real roster fail. */
     if (map.name === undefined && map.last === undefined) {
       throw new Error('No name column found. Columns read: ' + headers.join(', ') + '.');
     }
@@ -486,7 +789,10 @@
         }
       }
       return {
-        id: map.id !== undefined ? (row[map.id] || '').trim() : String(1001 + i),
+        /* Blank stays blank. Inventing String(1001 + i) here is what put two
+           sections both on 1001, and it is now the confirmation's decision to
+           make rather than the parser's (§21). */
+        id: map.id !== undefined ? (row[map.id] || '').trim() : '',
         last: last, first: first,
         folderId: (row[map.folderId] || '').trim()
       };
@@ -863,6 +1169,11 @@
   $('rosterFile').addEventListener('change', function (e) {
     if (e.target.files[0]) loadRoster(e.target.files[0]);
   });
+
+  /* The store comes up before anything is drawn, so a saved class is the first
+     thing on screen rather than appearing a beat later. */
+  bootStore();
+  renderClassPanel();
 
   wirePaste($('pasteFront'), 'front');
   wirePaste($('pasteBack'), 'back');
