@@ -1,0 +1,18 @@
+{
+  "$comment": "Icons are drawn and written by tools/make-icons.mjs — bare Node and zlib, no dependency and no build step; the PNGs are committed and the script never runs at deploy time. Full-bleed and opaque on purpose: iOS masks apple-touch-icon corners itself and Android clips 'maskable' to a circle. theme_color is the navy the sheet header uses (decisions.md §10), so the iOS splash hands over to the page without a flash of another colour.",
+  "name": "Rubric Print",
+  "short_name": "Rubric Print",
+  "description": "One personalized rubric per student, with a routing code that files the scan. Everything stays on this device.",
+  "start_url": "./",
+  "scope": "./",
+  "display": "standalone",
+  "theme_color": "#0d2137",
+  "background_color": "#0d2137",
+  "icons": [
+    { "src": "./icons/icon-152.png", "sizes": "152x152", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-167.png", "sizes": "167x167", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-180.png", "sizes": "180x180", "type": "image/png", "purpose": "any" },
+    { "src": "./icons/icon-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any maskable" },
+    { "src": "./icons/icon-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any maskable" }
+  ]
+}

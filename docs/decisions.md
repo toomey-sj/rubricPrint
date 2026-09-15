@@ -553,6 +553,46 @@ then it is a migration between storage engines across an origin change, with the
 file as the only bridge. Which is an argument for settling the *when* before testers start,
 not for settling it this afternoon.
 
+
+## 25 · Served as a PWA, storing nothing on the server
+
+Decided 15 Sep 2026, and it follows from §24 rather than adding to it. The app goes to
+`rubricprint.hwgteach.com` as a Cloudflare Pages site, alongside `planbook` and `bbstyler`.
+**Nothing is saved to the website.** There is no backend, no API, no analytics, no
+third-party script — rosters live in the browser's own storage on the teacher's machine and
+are read and written by the page itself.
+
+**The service worker is what pays back what the URL spent.** The original argument for
+`file://` was that printing day is when the school network is least trustworthy (§1). A
+served page loses that — unless the shell is precached, which it now is. Verified by
+killing the server and reloading: the page, all three scripts and the class panel came up
+from Cache Storage with nothing listening on the port. That is *better* than `file://`,
+because an installed app also survives the folder being moved, the laptop being replaced
+and a teacher who has no idea where the file went.
+
+**Installable matters more than it looks.** iOS evicts a non-installed site's storage after
+about a week of non-use; home-screen installs are exempt. For an app whose entire value is a
+class list that persists, "add to home screen" is data safety rather than polish — Planbook
+learned this and says so in its own data model. Rubric Print does not yet warn about it, and
+should.
+
+**`localStorage` stays, for now.** Serving makes IndexedDB available and Planbook uses it,
+so consistency argues for switching. The counter-argument is size: Planbook's year document
+is 3–6 MB because it carries 15k scores and 22k attendance marks, and this one carries
+classes and names — a 150-student year is around 15 KB, three orders of magnitude inside the
+budget. Synchronous and simple wins until something stores more than a roster. **The
+threshold to revisit at** is saved assignments: a rubric library of a hundred pastes is a
+few hundred KB, still fine, but it is the first thing that grows without a ceiling.
+
+**What is published is `app/`, not the repository.** Set as the output directory with no
+build command, which is also what keeps `data/` and `tools/` off a public server. Details
+and the one Cloudflare zone setting that is not in this repo: [deploy.md](deploy.md).
+
+**`file://` still works and is no longer the point.** Opening `app/index.html` from disk
+still prints. The manifest and worker fail there and both failures are non-fatal on purpose.
+But storage does not cross origins (§23), so the two are separate installations of the same
+app, and the export file is the only bridge. Nobody should be told to use both.
+
 ---
 
 ## Deliberately not built

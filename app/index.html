@@ -4,6 +4,14 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Rubric Print</title>
+
+<!-- Installable, so it opens from the home screen with the network off — which is
+     the guarantee the move from file:// to a URL had to pay back. Relative hrefs
+     throughout, so the app also still works opened straight from disk: a manifest
+     and a worker that fail to load there are ignored, not fatal. -->
+<meta name="theme-color" content="#0d2137">
+<link rel="manifest" href="manifest.webmanifest">
+<link rel="apple-touch-icon" href="icons/icon-180.png">
 <link rel="icon" href="data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 100 100'><text y='.9em' font-size='90'>📋</text></svg>">
 <!--
   ══════════════════════════════════════════════════════════════════════════════

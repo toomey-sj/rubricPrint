@@ -1175,6 +1175,26 @@
   bootStore();
   renderClassPanel();
 
+  /* ── Offline ───────────────────────────────────────────────────────────────
+     Registered, logged on failure, and never fatal. A worker cannot register from
+     `file://` or over plain http from another host, and neither case should stop
+     an app that works perfectly without one — all it costs is opening offline.
+     Printing day is when the network is least trustworthy, so that cost is the
+     whole reason sw.js exists. */
+  /* isSecureContext, not a protocol test: localhost counts as secure over plain
+     http, and testing for 'https:' would make the worker unregisterable exactly
+     where it is developed. */
+  if ('serviceWorker' in navigator && window.isSecureContext) {
+    window.addEventListener('load', function () {
+      navigator.serviceWorker.register('sw.js').catch(function (err) {
+        if (window.console) {
+          console.error('Rubric Print: the service worker did not register, so this ' +
+            'copy will not open with the network off. Cause: ' + err.message);
+        }
+      });
+    });
+  }
+
   wirePaste($('pasteFront'), 'front');
   wirePaste($('pasteBack'), 'back');
 

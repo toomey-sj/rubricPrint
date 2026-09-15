@@ -1,0 +1,45 @@
+# Cloudflare Pages response headers.
+#
+# Pages reads this file from the root of what it publishes. For Rubric Print that is
+# `app/` — set as the build output directory, with no build command — which is also
+# what keeps `data/` and `tools/` off the public site. Pages consumes this file and
+# never serves it. Syntax is a path pattern on its own line with its headers indented
+# under it; a line beginning with # is a comment.
+#
+# WHY ONLY THESE. Everything else is precached by sw.js and answered out of Cache
+# Storage, which ignores Cache-Control entirely. What is pinned here is the update
+# path, and nothing else needs to be.
+#
+#   sw.js  — CACHE in sw.js is bumped by hand on every deploy that changes the shell,
+#            and `activate` then deletes every cache that is not the new one. None of
+#            that starts until the browser fetches a sw.js it has not seen before, so
+#            a worker served from an HTTP cache is a teacher opening last week's app
+#            with the bump discipline intact and useless.
+#
+#   the shell document — pinned for the loads that happen before there is a service
+#            worker at all: the first visit, and the first one after site data is
+#            cleared, which takes the worker with it. BOTH paths are listed because a
+#            teacher types the bare origin, so the request carrying the shell arrives
+#            at `/`, and a rule written for `/index.html` does not match it.
+#
+# no-cache is not no-store: the browser still keeps the copy and revalidates, so a
+# deploy that changed nothing costs a 304 rather than a download.
+#
+# THIS FILE IS NOT THE WHOLE STORY, and the part it cannot say is the part that bit
+# Planbook first. A Cloudflare zone has its own Browser Cache TTL, four hours by
+# default on a new zone, and it REWRITES Cache-Control on anything the edge caches —
+# which includes .js. Planbook's first deploy served /sw.js as max-age=14400 with a
+# correct _headers file in place. HTML escaped it only because the edge does not cache
+# HTML by default. The zone must be set to **Respect Existing Headers**
+# (Caching → Configuration) or nothing here binds. Re-read /sw.js on the wire after
+# any zone change: a green file in the repo proves nothing about what a browser was
+# told.
+
+/sw.js
+  Cache-Control: no-cache
+
+/index.html
+  Cache-Control: no-cache
+
+/
+  Cache-Control: no-cache

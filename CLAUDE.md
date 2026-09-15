@@ -11,9 +11,17 @@ recoverable from reading it. Current plan and progress: [docs/roadmap.md](docs/r
 
 ## Two halves, two sets of rules
 
-**`app/`** is the print surface. It opens by double-clicking `app/index.html` — no server,
-no build step, no network, zero dependencies, no ES modules. Printing day is exactly when
-the school network is least trustworthy, so this half must work without it.
+**`app/`** is the print surface. It ships to **rubricprint.hwgteach.com** as a Cloudflare
+Pages PWA — static assets, no build step, no backend, **nothing saved to the server**
+([docs/deploy.md](docs/deploy.md), `decisions.md` §25). `app/` is the published root, which
+is what keeps `data/` and `tools/` off the web. It still opens by double-clicking too: the
+manifest and service worker fail non-fatally at a `file://` origin.
+
+Still zero dependencies, no bundler, no ES modules — `sw.js` is the only build-adjacent
+piece. Printing day is when the school network is least trustworthy, so the shell is
+precached and the app opens with the network off. **Add a file to `app/` and you must add it
+to `SHELL` in `sw.js` and bump `CACHE` in the same commit**, or it works in every test you
+run and is missing the first time somebody opens the app offline.
 
 **`tools/`** is the desk-side splitter. npm packages are fine and it runs from a terminal,
 because it runs after class rather than during it.
