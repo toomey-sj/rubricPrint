@@ -10,7 +10,8 @@
     "test:qr": "node qr-selftest.mjs --roster ../data/roster-sample.json",
     "test:packets": "node packets-test.mjs --roster ../data/roster-sample.json",
     "split": "node split.mjs",
-    "test:year": "node year-test.mjs"
+    "test:year": "node year-test.mjs",
+    "test:ui": "node ui-test.mjs"
   },
   "dependencies": {
     "@napi-rs/canvas": "^0.1.60",

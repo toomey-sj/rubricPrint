@@ -89,12 +89,23 @@ wrong, and goes to stderr.
 
 ```
 cd tools
-npm test                   # both suites, against data/roster-sample.json
+npm test                   # all three pure suites, against data/roster-sample.json
 node packets-test.mjs --roster ../data/roster-sample.json   # the boundary rule, and every way it goes wrong
 node qr-selftest.mjs  --roster ../data/roster-sample.json   # encode all payloads, decode them back with jsQR
 node verify-sheet.mjs ../data/out/sheets.pdf --roster ../data/class.json --run SRE1-2026-09-18
 node make-test-scan.mjs --roster ../data/class.json         # synthesize a duplex scan from a printed sheets.pdf
+
+npm start                  # http://localhost:8080/ — and it must be 8080
+npm run test:ui            # the app's own screens, in a real browser
 ```
+
+`npm test` is three pure suites and needs nothing but Node. **`test:ui` is separate
+because it needs a browser and a running server**, and it drives the half of the app that
+Node cannot reach: which file is being imported and into what, what a confirmation says
+before anything is written, and whether a refusal really did leave the store alone. Its
+first run found four faults every pure test had passed over. It speaks CDP directly
+(`tools/lib/browser.mjs`, node builtins only) — no puppeteer, and no dependency added to
+a folder whose other half is dependency-free on purpose.
 
 `verify-sheet.mjs` is the one that earns its keep: it reads the printed PDF through the same
 crop the splitter uses, proving the codes are readable and correctly placed before a sheet of
