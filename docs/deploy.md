@@ -3,7 +3,10 @@
 **Not deployed yet — running on localhost until it is fit to share.** This file is
 the plan, written while the decisions were fresh. To run it now:
 
-
+```
+cd tools
+npm start          # http://localhost:8080/
+```
 
 **Use that port.** Saved classes belong to the origin, and the port is part of it —
 a class saved at :8080 is invisible at :8081 and the app comes up looking like it
