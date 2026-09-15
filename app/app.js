@@ -583,6 +583,21 @@
     var klass = Y.classById(doc, classId);
     if (!klass) return fail('That class is no longer in this document.');
 
+    /* A CLASS THAT ALREADY HAS A ROSTER IS RECONCILED, NEVER REPLACED. The fork
+       is the roster being non-empty rather than a mode the user picks, because
+       nobody re-importing a corrected spreadsheet thinks of themselves as
+       choosing between two algorithms — and the wrong one of the two silently
+       drops whoever the file left out. */
+    if (klass.roster.length) {
+      var plan;
+      try {
+        plan = Y.reconcile(doc, classId, parsed.students);
+      } catch (err) {
+        return failImport(err.message, function () { pickRosterFor(classId); });
+      }
+      return confirmReconcile(plan);
+    }
+
     var blank = Y.needsIds(parsed.students);
 
     /* §21: minting is a confirmed act, never a quiet default, because the number
@@ -624,6 +639,145 @@
     $('mintNo').addEventListener('click', function () {
       renderClassPanel();
     });
+  }
+
+  /* ── Re-importing into a class that already has a roster ──────────────────
+     The rules are in year.js. What lives here is the proposal: every change the
+     file would make, counted and named, with the drops individually ticked —
+     because the drops are the half that a wholesale replace used to do silently,
+     and they are the half that stops a student getting a sheet. */
+  function confirmReconcile(plan) {
+    var changes = plan.addNew.length + plan.addExisting.length + plan.drops.length +
+      plan.renames.length + plan.folderUpdates.length;
+
+    if (!changes) {
+      $('classPanel').innerHTML =
+        '<div class="notice">' +
+          '<strong>That file matches ' + escapeText(plan.className) + ' exactly.</strong>' +
+          'All ' + plan.keep.length + ' student' + (plan.keep.length === 1 ? '' : 's') +
+          ' are already here with the same names and IDs, so there is nothing to ' +
+          'change. Re-importing the same roster twice is safe and does nothing.' +
+          '<div class="notice-actions">' +
+            '<button class="class-action-btn primary" id="reconcileBack">Back</button>' +
+          '</div>' +
+        '</div>';
+      $('reconcileBack').addEventListener('click', function () { renderClassPanel(); });
+      return;
+    }
+
+    var sections = [];
+    if (plan.addNew.length || plan.addExisting.length) {
+      sections.push(listSection('To add',
+        plan.addNew.map(function (e) {
+          return escapeText(nameOfRow(e.row)) + ' · ID ' + escapeText(String(e.row.id)) +
+            ' · new to this year';
+        }).concat(plan.addExisting.map(function (e) {
+          return escapeText(nameOfRow(e.row)) + ' · ID ' + escapeText(String(e.row.id)) +
+            ' · already in ' + (e.classes.length
+              ? escapeText(e.classes.map(function (c) { return c.name; }).join(', '))
+              : 'this year, in no class');
+        }))));
+    }
+    if (plan.renames.length) {
+      sections.push(listSection('Name changes', plan.renames.map(function (r) {
+        return escapeText(r.from) + ' → ' + escapeText(r.to) + ' · ID ' + escapeText(r.id);
+      })));
+    }
+    if (plan.folderUpdates.length) {
+      sections.push(listSection('Portfolio folders', plan.folderUpdates.map(function (f) {
+        return escapeText(f.id) + ' · ' + (f.from ? 'changes from ' + escapeText(f.from) : 'none yet') +
+          ' → ' + escapeText(f.to);
+      })));
+    }
+
+    /* The drops get boxes rather than a list, because this is the one part of a
+       re-import that takes something away, and the reason somebody is missing
+       from a file is as often a filtered spreadsheet as a student who left. */
+    var dropList = plan.drops.length
+      ? '<strong style="display:block; margin-top:10px;">In ' +
+          escapeText(plan.className) + ' but not in that file</strong>' +
+        '<div style="margin-top:2px;">Ticked means drop. They stay in this year either ' +
+        'way, with the same ID, so sheets already printed still split.</div>' +
+        '<ul class="notice-list" style="list-style:none; margin-left:0;">' +
+          plan.drops.map(function (d) {
+            return '<li><label style="display:flex; gap:8px; align-items:baseline;">' +
+              '<input type="checkbox" data-drop-id="' + escapeText(d.id) + '" checked>' +
+              '<span>' + escapeText(studentLabel(d.student)) + ' · ID ' +
+                escapeText(d.id) + '</span></label></li>';
+          }).join('') +
+        '</ul>'
+      : '';
+
+    $('classPanel').innerHTML =
+      '<div class="notice">' +
+        '<strong>Update ' + escapeText(plan.className) + ' from that file?</strong>' +
+        'Matched on student ID: ' + plan.keep.length + ' of the ' + plan.rows +
+        ' row' + (plan.rows === 1 ? '' : 's') + ' in the file ' +
+        (plan.keep.length === 1 ? 'is' : 'are') + ' already on this roster and ' +
+        (plan.keep.length === 1 ? 'is' : 'are') + ' left alone. Nothing is re-numbered.' +
+        sections.join('') +
+        dropList +
+        '<div class="notice-actions">' +
+          '<button class="class-action-btn primary" id="reconcileYes">Apply</button>' +
+          '<button class="class-action-btn" id="reconcileNo">Cancel</button>' +
+        '</div>' +
+      '</div>';
+
+    var boxes = $('classPanel').querySelectorAll('[data-drop-id]');
+    var ticked = function () {
+      var out = [];
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].checked) out.push(boxes[i].getAttribute('data-drop-id'));
+      }
+      return out;
+    };
+    /* The button says what it is about to do, and keeps saying it as the boxes
+       change — a count that goes stale while somebody unticks is worse than no
+       count at all. */
+    var recount = function () {
+      var adds = plan.addNew.length + plan.addExisting.length;
+      var drops = ticked().length;
+      var parts = [];
+      if (adds) parts.push('add ' + adds);
+      if (drops) parts.push('drop ' + drops);
+      if (plan.renames.length) parts.push('rename ' + plan.renames.length);
+      $('reconcileYes').textContent = parts.length
+        ? 'Apply — ' + parts.join(', ') : 'Apply';
+    };
+    for (var i = 0; i < boxes.length; i++) boxes[i].addEventListener('change', recount);
+    recount();
+
+    $('reconcileYes').addEventListener('click', function () {
+      var result;
+      try {
+        result = Y.applyReconcile(state.doc, plan, ticked());
+      } catch (err) {
+        return fail(err.message);
+      }
+      var ok = writeDoc(state.doc);
+      state.classId = plan.classId;
+      var said = [];
+      if (result.added) said.push(result.added + ' added');
+      if (result.dropped) said.push(result.dropped + ' dropped');
+      if (result.renamed) said.push(result.renamed + ' renamed');
+      afterRosterChange(ok, escapeText(plan.className) + ' updated — ' +
+        (said.length ? said.join(', ') : 'nothing changed') + '. ' + result.kept +
+        ' student' + (result.kept === 1 ? '' : 's') + ' matched on ID and kept the ' +
+        'ID they already had.');
+    });
+    $('reconcileNo').addEventListener('click', function () { renderClassPanel(); });
+  }
+
+  function listSection(title, items) {
+    return '<strong style="display:block; margin-top:10px;">' + title + ' · ' +
+      items.length + '</strong>' +
+      '<ul class="notice-list">' +
+        items.map(function (line) { return '<li>' + line + '</li>'; }).join('') +
+      '</ul>';
+  }
+
+  function nameOfRow(row) {
+    return String(row.last || '').trim() + ', ' + String(row.first || '').trim();
   }
 
   function commitImport(parsed, klass, minted) {
@@ -725,6 +879,15 @@
   }
 
   function failYearImport(message) {
+    failImport(message, pickYearFile);
+  }
+
+  /* A refused import must not take the open class off the screen with it. fail()
+     writes into the roster list and clears state.roster, which is right for a
+     file that WAS going to be the roster and wrong for one that was an update to
+     a class already open — there, the print list on screen is still true, and
+     wiping it would say the opposite of what the message says. */
+  function failImport(message, retry) {
     $('classPanel').innerHTML =
       '<div class="notice notice-bad">' +
         '<strong>That file was not imported.</strong>' +
@@ -734,7 +897,7 @@
           '<button class="class-action-btn" id="importBack">Back</button>' +
         '</div>' +
       '</div>';
-    $('importRetry').addEventListener('click', pickYearFile);
+    $('importRetry').addEventListener('click', function () { retry(); });
     $('importBack').addEventListener('click', function () { renderClassPanel(); });
   }
 

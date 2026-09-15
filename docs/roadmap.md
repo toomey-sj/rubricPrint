@@ -1,7 +1,7 @@
 # Roadmap
 
 **Status: phase 1 complete. Phase 2 part-built — store, classes, CSV import, minting,
-archive, export, year import and add/drop are in; re-import and Planbook seeding are not.**
+archive, export, year import, add/drop and re-import are in; Planbook seeding is not.**
 Running on localhost (`cd tools && npm start`) until it is fit to share.
 Last updated 15 Sep 2026.
 
@@ -145,14 +145,19 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
       rather than being sorted in — sheets print in roster order and the stack is handed out
       by walking it, so an October arrival belongs at the back rather than moving everyone
       else's position.
-- [ ] **Re-import reconciles; it never replaces.** An updated CSV into an existing class
+- [x] **Re-import reconciles; it never replaces.** An updated CSV into an existing class
       matches on student ID, adds the new, and lists anyone in the class but not in the file
-      as a *proposed* drop to confirm (§6). Replacing wholesale was rejected: it silently
-      drops the missing, and on a class built from a blank-ID CSV it destroys the generated
-      IDs — which breaks every sheet already printed for them. **A blank-ID file cannot be
-      reconciled at all**, because there is nothing to match on; it is refused, pointing at
-      the ID-filled file the app handed back, which is the second job that file exists to do
-      (§21).
+      as a *proposed* drop to confirm (§6) — ticked individually, because the reason somebody
+      is missing from a file is as often a filtered spreadsheet as a student who left.
+      Replacing wholesale was rejected: it silently drops the missing, and on a class built
+      from a blank-ID CSV it destroys the generated IDs — which breaks every sheet already
+      printed for them. **A blank-ID file cannot be reconciled at all**, because there is
+      nothing to match on; it is refused, pointing at the ID-filled file the app handed back,
+      which is the second job that file exists to do (§21). Name changes and arriving folder
+      IDs are listed and applied on confirmation; an unchanged file reports that it changed
+      nothing and writes nothing, so a re-import is safe to repeat. **The fork is the roster
+      being non-empty, not a mode anyone picks** — nobody re-importing a corrected
+      spreadsheet thinks of themselves as choosing between two algorithms.
 - [x] **Archive a class; nothing is deleted.** Archiving takes it out of the bar and keeps
       everything — the roster stays, and sheets already printed still split. **v1 has no
       destructive action at all**, which is worth having on purpose while the store is new

@@ -437,6 +437,155 @@
     });
   }
 
+  /* ── Re-importing a roster into a class that already has one ──────────────
+     IT RECONCILES; IT NEVER REPLACES. An updated CSV matches on student ID, adds
+     what is new, and lists anyone in the class but not in the file as a PROPOSED
+     drop for a person to confirm (§6).
+
+     Replacing wholesale was rejected twice over. It silently drops whoever is
+     missing from the file — a spreadsheet filtered to one period, an export
+     taken before the new arrivals — and on a class built from a blank-ID CSV it
+     destroys the generated IDs, which breaks every sheet already printed for
+     those students (§21).
+
+     A BLANK-ID FILE CANNOT BE RECONCILED AT ALL, and that is not a policy, it is
+     arithmetic: the ID is the only thing there is to match on, so a row without
+     one cannot be told apart from a student who is already here. Minting for it
+     would hand a second permanent ID to somebody who already has one printed on
+     paper. It is refused, pointing at the ID-filled file the app handed back
+     when it minted them — which is the second job that file exists to do. */
+
+  function nameOf(row) {
+    return String(row.last || '').trim() + ', ' + String(row.first || '').trim();
+  }
+
+  function reconcile(doc, classId, rows) {
+    var klass = classById(doc, classId);
+    if (!klass) throw new Error('That class is no longer in this document.');
+
+    var blank = needsIds(rows);
+    if (blank.length) {
+      throw new Error(blank.length + ' row(s) in that file have no student ID, and a ' +
+        'class that already has a roster can only be updated by matching on the ID. ' +
+        'Without one there is no way to tell a new student from somebody who is ' +
+        'already here — and assigning new IDs would give students a second one, ' +
+        'while their sheets are printed with the first. Import the roster file this ' +
+        'app handed back with the ID column filled in, or fill the IDs in yourself.');
+    }
+
+    /* The same collision the roster loader and buildPackets check for. Two rows
+       on one ID here would reconcile against the same student twice and quietly
+       keep only the last one's name. */
+    var seen = {};
+    var repeated = [];
+    rows.forEach(function (row) {
+      var id = String(row.id);
+      if (seen[id] && repeated.indexOf(id) === -1) repeated.push(id);
+      seen[id] = true;
+    });
+    if (repeated.length) {
+      throw new Error('Student ID ' + repeated.join(', ') + ' appears more than once in ' +
+        'that file. Two students sharing an ID would file into each other’s folders.');
+    }
+
+    var onRoster = {};
+    klass.roster.forEach(function (id) { onRoster[id] = true; });
+
+    var plan = {
+      classId: klass.id,
+      className: klass.name,
+      rows: rows.length,
+      keep: [],
+      addExisting: [],
+      addNew: [],
+      renames: [],
+      folderUpdates: [],
+      drops: []
+    };
+
+    rows.forEach(function (row) {
+      var id = String(row.id);
+      var student = studentById(doc, id);
+
+      if (!student) {
+        plan.addNew.push({ row: row });
+        return;
+      }
+
+      /* A NAME CHANGE IS A CHANGE TO PROPOSE, not to apply quietly. Most are a
+         correction or a marriage; one is the file being for a different school. */
+      if (nameOf(student) !== nameOf(row)) {
+        plan.renames.push({ id: id, from: nameOf(student), to: nameOf(row) });
+      }
+      /* A folder that arrives where there was none is the Drive work landing
+         later, and it is not destructive. A folder that CHANGES is, so both are
+         listed and neither is silent (§15's printedFolderId exists for exactly
+         the case where they differ). */
+      var incomingFolder = String(row.folderId || '').trim();
+      if (incomingFolder && incomingFolder !== (student.folderId || '')) {
+        plan.folderUpdates.push({ id: id, from: student.folderId, to: incomingFolder });
+      }
+
+      if (onRoster[id]) plan.keep.push(id);
+      else plan.addExisting.push({ row: row, student: student,
+                                   classes: classesOfStudent(doc, id) });
+    });
+
+    var inFile = {};
+    rows.forEach(function (row) { inFile[String(row.id)] = true; });
+    klass.roster.forEach(function (id) {
+      if (!inFile[id]) plan.drops.push({ id: id, student: studentById(doc, id) });
+    });
+
+    return plan;
+  }
+
+  /* Applied only after the drops have been confirmed one by one, and only to
+     drops the plan actually proposed — a list of ids arriving from a screen is
+     not allowed to remove somebody the file never mentioned. */
+  function applyReconcile(doc, plan, dropIds) {
+    var proposed = {};
+    plan.drops.forEach(function (d) { proposed[d.id] = true; });
+    (dropIds || []).forEach(function (id) {
+      if (!proposed[id]) {
+        throw new Error('That drop was not one this file proposed. Nothing has changed.');
+      }
+    });
+
+    plan.renames.forEach(function (change) {
+      var student = studentById(doc, change.id);
+      var comma = change.to.indexOf(',');
+      student.last = change.to.slice(0, comma).trim();
+      student.first = change.to.slice(comma + 1).trim();
+    });
+    plan.folderUpdates.forEach(function (change) {
+      studentById(doc, change.id).folderId = change.to;
+    });
+    plan.addNew.forEach(function (entry) {
+      doc.students.push({
+        id: String(entry.row.id),
+        last: String(entry.row.last || '').trim(),
+        first: String(entry.row.first || '').trim(),
+        /* null, never a placeholder (§20). */
+        folderId: String(entry.row.folderId || '').trim() || null
+      });
+      addToClass(doc, plan.classId, String(entry.row.id));
+    });
+    plan.addExisting.forEach(function (entry) {
+      addToClass(doc, plan.classId, String(entry.row.id));
+    });
+    (dropIds || []).forEach(function (id) {
+      dropFromClass(doc, plan.classId, id);
+    });
+
+    return {
+      added: plan.addNew.length + plan.addExisting.length,
+      dropped: (dropIds || []).length,
+      renamed: plan.renames.length,
+      kept: plan.keep.length
+    };
+  }
+
   /* ── Minting a student ID ─────────────────────────────────────────────────
      §21: an ID is permanent the moment it is printed, because it is inside the QR
      and the splitter joins on it. So these are never regenerated, they are unique
@@ -518,6 +667,8 @@
     dropFromClass: dropFromClass,
     moveStudent: moveStudent,
     candidatesFor: candidatesFor,
+    reconcile: reconcile,
+    applyReconcile: applyReconcile,
     rosterFromClass: rosterFromClass,
     nextGeneratedId: nextGeneratedId,
     mintStudentId: mintStudentId,

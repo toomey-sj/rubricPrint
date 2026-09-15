@@ -278,6 +278,145 @@ console.log(`\nYear document\n${'-'.repeat(64)}`);
   }
 }
 
+/* ── Re-import reconciles; it never replaces ────────────────────────────────
+   The rejected design silently dropped whoever was missing from the file, and on
+   a class built from a blank-ID CSV it destroyed the generated IDs — breaking
+   every sheet already printed for those students. So the cases that matter are
+   the ones where the file is INCOMPLETE or CHANGED, not the happy one. */
+{
+  const build = () => {
+    const doc = Y.newYearDocument('2026-2027');
+    const k = Y.addClass(doc, 'Period 1');
+    doc.students.push(
+      { id: '2026-0001', last: 'Achebe', first: 'Chinua', folderId: null },
+      { id: '2026-0002', last: 'Baldwin', first: 'James', folderId: null });
+    k.roster.push('2026-0001', '2026-0002');
+    return { doc, k };
+  };
+  const row = (id, last, first, folderId = '') => ({ id, last, first, folderId });
+
+  {
+    const { doc, k } = build();
+    const plan = Y.reconcile(doc, k.id, [
+      row('2026-0001', 'Achebe', 'Chinua'),
+      row('2026-0003', 'Cisneros', 'Sandra')
+    ]);
+    check(plan.keep.join(',') === '2026-0001', 'a student in both is kept, not re-added');
+    check(plan.addNew.length === 1, 'a student only in the file is an add');
+    check(plan.drops.length === 1 && plan.drops[0].id === '2026-0002',
+      'a student only in the class is a PROPOSED drop',
+      'wholesale replacement would have done this silently');
+
+    /* Proposed, and not done until the ids come back from a person. */
+    Y.applyReconcile(doc, plan, []);
+    check(k.roster.join(',') === '2026-0001,2026-0002,2026-0003',
+      'confirming no drops adds without removing anybody',
+      'the missing student stays until somebody says otherwise');
+    check(doc.students.length === 3, 'and the new student record exists');
+    check(doc.students[2].folderId === null,
+      'with a null folder, never a placeholder');
+  }
+
+  {
+    const { doc, k } = build();
+    const plan = Y.reconcile(doc, k.id, [row('2026-0001', 'Achebe', 'Chinua')]);
+    Y.applyReconcile(doc, plan, ['2026-0002']);
+    check(k.roster.join(',') === '2026-0001', 'a confirmed drop is applied');
+    check(doc.students.length === 2, 'and still leaves the student in the year',
+      'their sheets are in a stack');
+  }
+
+  /* A screen can send back any list of ids. Only the ones this file proposed may
+     be acted on. */
+  {
+    const { doc, k } = build();
+    const plan = Y.reconcile(doc, k.id, [
+      row('2026-0001', 'Achebe', 'Chinua'), row('2026-0002', 'Baldwin', 'James')]);
+    check(/not one this file proposed/.test(
+      threw(() => Y.applyReconcile(doc, plan, ['2026-0001'])) || ''),
+      'a drop the file never proposed is refused');
+    check(k.roster.length === 2, 'and nothing is changed on the way out');
+  }
+
+  /* THE ONE THE WHOLE RULE EXISTS FOR. */
+  {
+    const { doc, k } = build();
+    const message = threw(() => Y.reconcile(doc, k.id, [
+      row('', 'Achebe', 'Chinua'), row('', 'Baldwin', 'James')])) || '';
+    check(/no student ID/.test(message), 'a blank-ID file is refused outright');
+    check(/handed back with the ID column/.test(message),
+      'and the message points at the file that fixes it',
+      'which is the second job that file exists to do (§21)');
+    check(k.roster.length === 2 && doc.students.length === 2,
+      'and the class is untouched');
+  }
+
+  {
+    const { doc, k } = build();
+    check(/appears more than once/.test(threw(() => Y.reconcile(doc, k.id, [
+      row('2026-0001', 'Achebe', 'Chinua'),
+      row('2026-0001', 'Someone', 'Else')])) || ''),
+      'two rows on one ID are refused rather than reconciled twice');
+  }
+
+  /* A name change is proposed, not applied quietly: most are a correction, and
+     one is the file being for a different school. */
+  {
+    const { doc, k } = build();
+    const plan = Y.reconcile(doc, k.id, [
+      row('2026-0001', 'Achebe-Okoye', 'Chinua'),
+      row('2026-0002', 'Baldwin', 'James')]);
+    check(plan.renames.length === 1 && /Achebe, Chinua/.test(plan.renames[0].from) &&
+      /Achebe-Okoye, Chinua/.test(plan.renames[0].to),
+      'a changed name is listed with both spellings');
+    Y.applyReconcile(doc, plan, []);
+    check(doc.students[0].last === 'Achebe-Okoye', 'and applied on confirmation');
+    check(doc.students[0].id === '2026-0001', 'with the ID untouched',
+      'renaming is not re-identifying');
+  }
+
+  /* A student already in the year, arriving in a second class. */
+  {
+    const { doc, k } = build();
+    const other = Y.addClass(doc, 'Period 3');
+    doc.students.push({ id: '2026-0009', last: 'Dove', first: 'Rita', folderId: null });
+    other.roster.push('2026-0009');
+
+    const plan = Y.reconcile(doc, k.id, [
+      row('2026-0001', 'Achebe', 'Chinua'),
+      row('2026-0002', 'Baldwin', 'James'),
+      row('2026-0009', 'Dove', 'Rita')]);
+    check(plan.addNew.length === 0 && plan.addExisting.length === 1,
+      'somebody already in the year is added by membership, not duplicated');
+    check(plan.addExisting[0].classes[0].name === 'Period 3',
+      'and the class they are already in is named');
+    Y.applyReconcile(doc, plan, []);
+    check(doc.students.length === 3, 'one record, two rosters');
+    check(other.roster.length === 1, 'and the other class is not disturbed');
+  }
+
+  /* A folder ID arriving where there was none is Drive landing later. One that
+     CHANGES is a different matter, so both are listed. */
+  {
+    const { doc, k } = build();
+    const plan = Y.reconcile(doc, k.id, [
+      row('2026-0001', 'Achebe', 'Chinua', '1tmJcPx'),
+      row('2026-0002', 'Baldwin', 'James')]);
+    check(plan.folderUpdates.length === 1 && plan.folderUpdates[0].from === null,
+      'a folder arriving where there was none is listed');
+    Y.applyReconcile(doc, plan, []);
+    check(doc.students[0].folderId === '1tmJcPx', 'and applied');
+
+    const again = Y.reconcile(doc, k.id, [
+      row('2026-0001', 'Achebe', 'Chinua', '1tmJcPx'),
+      row('2026-0002', 'Baldwin', 'James')]);
+    check(again.folderUpdates.length === 0, 'and the same file changes nothing twice',
+      're-importing an unchanged roster is a no-op');
+    check(again.drops.length === 0 && again.addNew.length === 0,
+      'which is what makes a re-import safe to repeat');
+  }
+}
+
 /* ── Minting IDs ─────────────────────────────────────────────────────────────
    §21. The dangerous failures are all silent, so they are all covered here. */
 {
