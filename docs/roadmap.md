@@ -1,7 +1,8 @@
 # Roadmap
 
 **Status: phase 1 complete. Phase 2 part-built — store, classes, CSV import, minting,
-archive, export, year import, add/drop and re-import are in; Planbook seeding is not.**
+archive, export, year import, add/drop, re-import and Planbook seeding are in. The
+install prompt is what is left.**
 Running on localhost (`cd tools && npm start`) until it is fit to share.
 Last updated 15 Sep 2026.
 
@@ -134,8 +135,13 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
       by saying the store was not touched. Replacing a year that is already stored is the
       first destructive action in the app, so it is proposed with **both sides counted** and
       offers to export what it would replace: [decisions.md §26](decisions.md).
-- [ ] **Create classes from a Planbook backup, fully populated.** Keeps Planbook's `s_…`
-      ids so a later re-import reconciles instead of duplicating everyone.
+- [x] **Create classes from a Planbook backup, fully populated.** Keeps Planbook's `s_…`
+      ids so a later re-import reconciles instead of duplicating everyone — and keeps its
+      **class** ids too, so dropping the same backup in again finds the class it already made
+      and offers to update it rather than building a second one beside it. Seeding is
+      all-or-nothing, and the backup is put away once its classes are real, because two
+      sources for one class on screen is a question nobody can answer. This changes what the
+      file is for: [decisions.md §27](decisions.md).
 - [x] **Add/drop.** Move a student between classes, or drop them from one. A drop leaves the
       student in the document, because a sheet already printed still has to resolve. All three
       are proposed and confirmed: a move picks its destination from a list that names what the

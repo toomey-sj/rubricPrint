@@ -417,6 +417,105 @@ console.log(`\nYear document\n${'-'.repeat(64)}`);
   }
 }
 
+/* ── Seeding classes from a Planbook backup ─────────────────────────────────
+   Read from the real sample rather than a hand-made stand-in: the whole value of
+   this path is that it reads Planbook's actual file, and a fixture written from
+   memory would agree with the code and with nothing else. */
+{
+  const planbook = JSON.parse(
+    readFileSync(join(HERE, '..', 'data', 'planbook-sample-backup.json'), 'utf8'));
+
+  {
+    const doc = Y.newYearDocument('2026-2027');
+    const plan = Y.planbookPlan(doc, planbook);
+    check(plan.classes.length === 3, 'only the active classes are offered',
+      'the backup has four, one archived');
+    check(plan.classes.every((c) => !c.exists), 'none of them has been seeded yet');
+    check(plan.classes[0].count === 24, 'each is counted before anything is created');
+
+    const summary = Y.seedFromPlanbook(doc, planbook, plan.classes.map((c) => c.id));
+    check(summary.classes === 3, 'all three are created');
+    check(doc.classes.length === 3 && doc.classes[0].roster.length === 24,
+      'fully populated, not empty shells');
+
+    /* THE RULE THE WHOLE PATH EXISTS FOR (§20). */
+    check(doc.students.every((s) => /^s_/.test(s.id)),
+      'Planbook student ids are kept, never re-minted',
+      'so a later re-import reconciles instead of duplicating everyone');
+    check(doc.lastStudentSeq === 0, 'and the counter is untouched',
+      'nothing was minted, so nothing was spent');
+    check(doc.students.every((s) => s.folderId === null),
+      'folders are stored null, never a placeholder');
+
+    check(doc.classes[0].id === planbook.classes[0].id,
+      'the class keeps Planbook’s id too',
+      'so seeding the same backup twice finds the class it already made');
+    const again = Y.planbookPlan(doc, planbook);
+    check(again.classes.every((c) => c.exists), 'and a second look says so');
+    check(/already been created/.test(
+      threw(() => Y.seedFromPlanbook(doc, planbook, [again.classes[0].id])) || ''),
+      'seeding the same class twice is refused, pointing at the update path');
+  }
+
+  /* A student in two sections exists once — the shape doing its job. */
+  {
+    const doc = Y.newYearDocument('2026-2027');
+    const shared = {
+      schemaVersion: 3, docId: 'x', year: '2026-2027',
+      classes: [
+        { id: 'c_one', name: 'Period 1', archived: false, roster: ['s_a', 's_b'] },
+        { id: 'c_two', name: 'Period 2', archived: false, roster: ['s_b'] }
+      ],
+      students: [
+        { id: 's_a', last: 'Achebe', first: 'Chinua' },
+        { id: 's_b', last: 'Baldwin', first: 'James' }
+      ]
+    };
+    const summary = Y.seedFromPlanbook(doc, shared, ['c_one', 'c_two']);
+    check(summary.studentsAdded === 2 && summary.studentsReused === 1,
+      'a student in two sections is added once and reused once');
+    check(doc.students.length === 2, 'one record, two rosters');
+  }
+
+  /* A class made by hand with the same name is NOT the same class. Named rather
+     than merged: merging on a name is how two years of Period 1 become one. */
+  {
+    const doc = Y.newYearDocument('2026-2027');
+    Y.addClass(doc, planbook.classes[0].name);
+    const plan = Y.planbookPlan(doc, planbook);
+    check(plan.classes[0].exists === false, 'a same-named class is not treated as seeded');
+    check(plan.classes[0].nameClash === planbook.classes[0].name,
+      'but the clash is named, so creating a second one is a visible choice');
+  }
+
+  /* A roster id with nobody behind it is a broken backup, not a student to skip:
+     a sheet printed for nobody is a sheet nobody hands in. */
+  {
+    const doc = Y.newYearDocument('2026-2027');
+    const broken = {
+      schemaVersion: 3, docId: 'x', year: '2026-2027',
+      classes: [{ id: 'c_one', name: 'Period 1', archived: false, roster: ['s_a', 's_gone'] }],
+      students: [{ id: 's_a', last: 'Achebe', first: 'Chinua' }]
+    };
+    check(/not in this backup/.test(
+      threw(() => Y.seedFromPlanbook(doc, broken, ['c_one'])) || ''),
+      'a dangling roster id refuses the seed');
+    check(doc.students.length === 0 && doc.classes.length === 0,
+      'and creates nothing at all',
+      'every class is read and checked before any of them is created');
+  }
+
+  /* addClass keeps its own id when nobody supplies one, and refuses a duplicate. */
+  {
+    const doc = Y.newYearDocument('2026-2027');
+    const a = Y.addClass(doc, 'Period 1');
+    check(/^c_/.test(a.id), 'a class made in the app still mints its own id');
+    check(/already a class with the id/.test(
+      threw(() => Y.addClass(doc, 'Another', a.id)) || ''),
+      'and a supplied id that is taken is refused');
+  }
+}
+
 /* ── Minting IDs ─────────────────────────────────────────────────────────────
    §21. The dangerous failures are all silent, so they are all covered here. */
 {

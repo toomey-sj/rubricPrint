@@ -640,6 +640,51 @@ changed.
 
 ---
 
+## 27 · A Planbook backup creates classes; printing from it without saving is the smaller path
+
+Decided 15 Sep 2026. **This changes what the file is for.** §18 made a Planbook year backup
+a third roster source: browse it, pick a class, print, save nothing. It now offers first to
+**create its classes in this year, fully populated**, which is the thing a September
+afternoon actually wants — a whole timetable in one action instead of a CSV per section.
+
+Printing one without saving stays, on every row. §22 says a roster that brings its own
+identity may print and be forgotten, and Planbook's ids are pre-assigned, so that path is
+legitimate. It is now the *second* offer rather than the only one, in the same way drop-in
+went underneath the class list.
+
+**Two ids are kept, and the second one is the less obvious.**
+
+Planbook's **student** ids come across unchanged. That is §20's whole mitigation for the
+drift this accepts — two systems holding a roster for the same children — because `s_…`
+surviving is what makes a later update *reconcile* rather than mint a second identity for
+everyone (§21, §26).
+
+Planbook's **class** id is kept as ours. Our class ids are `c_` plus ten characters and so
+are Planbook's, so nothing downstream can tell which minted a given one — and it means
+dropping the same backup in again *finds the class it already made* and offers to update it,
+instead of building a second one beside it. **A name is not a key**: two years of "Period 1 —
+English 10" are different classes, and a class renamed mid-year is still the same class.
+Where a class of the same name already exists under a *different* id, that is named on
+screen and not merged, because merging on a name is exactly how two years become one roster.
+
+**Seeding is all-or-nothing.** Every selected class is read and checked before any of them
+is created, so a backup with one dangling roster id does not leave three classes made, a
+fourth half-made, and a panel showing a year nobody asked for. Same rule the splitter runs
+on: nothing is written when a student is missing.
+
+**The backup is put away once its classes are real**, and this is the part that would
+otherwise rot. Leaving it loaded leaves two sources for the same class on screen at once —
+the saved class and the snapshot it came from — with nothing saying which a tab is printing
+from. For the same reason, §19's remembered-class shortcut now only fires while the backup
+is *purely* a drop-in: once any of its classes has been created here, the picker is shown
+rather than jumping straight to printing from the staler of the two copies.
+
+**What this does not do** is sync. Nothing is written back to Planbook, and a class created
+here drifts from the backup it came from the moment either is edited. The update path is
+manual, asks before it drops anybody, and is the only reconciliation there is.
+
+---
+
 ## Deliberately not built
 
 | | note |

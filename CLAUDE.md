@@ -127,9 +127,14 @@ Planbook students carry no portfolio folder, so theirs is `placeholder-<studentI
 works only because packets join on `studentId` (§15). Do not make folder IDs load-bearing
 again.
 
-A Planbook year fills the header **class bar**, and switching tabs keeps the paste — that
-is multi-class printing (§19). Today only two ids and a year label persist, through a
-whitelist in `getPref`/`setPref` that refuses undeclared keys.
+A Planbook year backup now **creates classes in the year document**, keeping both its
+student ids and its class ids so a second drop of the same file updates rather than
+duplicates (§27). Printing one of its classes without saving is still there, underneath.
+While a backup is purely a drop-in it fills the header **class bar**, and switching tabs
+keeps the paste — that is multi-class printing (§19); once its classes have been created,
+the picker is shown instead, because printing from the snapshot and printing from the saved
+class are two different things. Only two ids and a year label persist as preferences,
+through a whitelist in `getPref`/`setPref` that refuses undeclared keys.
 
 **That is changing.** Phase 2 makes the app hold the class list — §8's "never authored in
 the app" is reversed by §20. Three rules govern it, and they are cheap now and expensive

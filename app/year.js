@@ -290,8 +290,16 @@
     return found;
   }
 
-  function addClass(doc, name) {
-    var klass = { id: newId('c'), name: String(name).trim(), archived: false, roster: [] };
+  /* `id` is optional and is only ever passed when a class is being created from
+     somewhere that already has one — a Planbook backup, whose class id is kept so
+     that seeding the same backup twice finds the class it already made instead of
+     building a second one beside it. Both shapes are `c_` plus ten characters, so
+     nothing downstream can tell which of the two minted it. */
+  function addClass(doc, name, id) {
+    if (id && classById(doc, id)) {
+      throw new Error('There is already a class with the id ' + id + ' in this year.');
+    }
+    var klass = { id: id || newId('c'), name: String(name).trim(), archived: false, roster: [] };
     doc.classes.push(klass);
     return klass;
   }
@@ -586,6 +594,129 @@
     };
   }
 
+  /* ── Seeding classes from a Planbook year backup ──────────────────────────
+     A backup holds the whole year — several classes, and one flat `students`
+     array they point into. Until now the app browsed one of those classes and
+     printed from it, saving nothing. That is still available (§22: a roster that
+     brings its own identity may print and be forgotten), but it is no longer the
+     point of the file: the point is that it can populate the year in one go,
+     which is the thing a September afternoon actually wants.
+
+     TWO IDS ARE KEPT, AND BOTH MATTER.
+
+     Planbook's STUDENT ids come across unchanged. That is §20's whole mitigation
+     for the drift this accepts: two systems can now hold a roster for the same
+     children, and keeping `s_…` is what makes a later re-import RECONCILE — same
+     student, same id, add the new, name the missing — instead of duplicating
+     everyone under freshly minted numbers.
+
+     Planbook's CLASS id is kept as ours, for the same reason one step up. Our own
+     class ids are `c_` plus ten characters and so are Planbook's, so nothing
+     downstream can tell the difference — and it means seeding the same backup
+     twice finds the class it already made rather than making a second one beside
+     it. A name is not a key: two years of "Period 1 — English 10" are two
+     different classes, and one class renamed mid-year is still the same one. */
+
+  function planbookStudents(pbDoc, pbClass) {
+    var byId = {};
+    pbDoc.students.forEach(function (s) { byId[s.id] = s; });
+    var rows = [];
+    var dangling = [];
+    (pbClass.roster || []).forEach(function (id) {
+      var s = byId[id];
+      if (!s) { dangling.push(id); return; }
+      rows.push({
+        id: s.id,
+        last: String(s.last || '').trim(),
+        first: String(s.first || '').trim(),
+        /* Planbook has no portfolio folder to give, and a stored placeholder is
+           indistinguishable from a real Drive ID a year on (§20). Empty here,
+           null in the document, synthesised only at print time. */
+        folderId: ''
+      });
+    });
+    if (dangling.length) {
+      throw new Error(pbClass.name + ' lists ' + dangling.length + ' student(s) who are ' +
+        'not in this backup (' + dangling.join(', ') + '). Re-export it from Planbook.');
+    }
+    return rows;
+  }
+
+  /* What seeding WOULD do, per class, so the screen can say it before it does it
+     (§6). Nothing here writes. */
+  function planbookPlan(doc, pbDoc) {
+    var byName = {};
+    doc.classes.forEach(function (c) { byName[c.name] = c; });
+
+    return {
+      year: pbDoc.year,
+      classes: pbDoc.classes.filter(function (c) { return c && !c.archived; })
+        .map(function (c) {
+          var existing = classById(doc, c.id);
+          var clash = !existing && byName[c.name] ? byName[c.name] : null;
+          return {
+            id: c.id,
+            name: c.name,
+            count: (c.roster || []).length,
+            /* Seeded from this backup before — the class id says so, which is
+               exactly why Planbook's is kept. */
+            exists: !!existing,
+            /* A class of the same name made by hand or from a CSV is NOT the same
+               class, and seeding would put a second one beside it. Named rather
+               than merged: merging on a name is how two years of Period 1 become
+               one roster. */
+            nameClash: clash ? clash.name : null
+          };
+        })
+    };
+  }
+
+  function seedFromPlanbook(doc, pbDoc, classIds) {
+    var wanted = {};
+    classIds.forEach(function (id) { wanted[id] = true; });
+
+    var summary = { classes: 0, studentsAdded: 0, studentsReused: 0, names: [] };
+
+    /* EVERY CLASS IS READ AND CHECKED BEFORE ANY OF THEM IS CREATED. Seeding five
+       classes at once and throwing on the fourth would leave three created, one
+       half-made and the panel showing a year nobody asked for. The same rule the
+       splitter runs on: nothing is written when a student is missing. */
+    var prepared = [];
+    pbDoc.classes.forEach(function (pbClass) {
+      if (!wanted[pbClass.id] || pbClass.archived) return;
+      if (classById(doc, pbClass.id)) {
+        throw new Error(pbClass.name + ' has already been created from this backup. ' +
+          'Update it from the backup instead — that matches on student ID and asks ' +
+          'before it drops anybody.');
+      }
+      prepared.push({ pbClass: pbClass, rows: planbookStudents(pbDoc, pbClass) });
+    });
+
+    prepared.forEach(function (entry) {
+      var pbClass = entry.pbClass;
+      var rows = entry.rows;
+      var klass = addClass(doc, pbClass.name, pbClass.id);
+      summary.classes += 1;
+      summary.names.push(pbClass.name);
+
+      rows.forEach(function (row) {
+        if (!studentById(doc, row.id)) {
+          doc.students.push({
+            id: row.id, last: row.last, first: row.first, folderId: null
+          });
+          summary.studentsAdded += 1;
+        } else {
+          /* A student in two sections exists once. This is the shape doing its
+             job: the second class gets a roster entry, not a second record. */
+          summary.studentsReused += 1;
+        }
+        addToClass(doc, klass.id, row.id);
+      });
+    });
+
+    return summary;
+  }
+
   /* ── Minting a student ID ─────────────────────────────────────────────────
      §21: an ID is permanent the moment it is printed, because it is inside the QR
      and the splitter joins on it. So these are never regenerated, they are unique
@@ -668,6 +799,9 @@
     moveStudent: moveStudent,
     candidatesFor: candidatesFor,
     reconcile: reconcile,
+    planbookStudents: planbookStudents,
+    planbookPlan: planbookPlan,
+    seedFromPlanbook: seedFromPlanbook,
     applyReconcile: applyReconcile,
     rosterFromClass: rosterFromClass,
     nextGeneratedId: nextGeneratedId,

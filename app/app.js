@@ -86,9 +86,18 @@
            does — but only when the file is the same year, and only when that class
            is still in it and still has a roster. Anything else falls through to the
            picker rather than guessing. The choice is visible in the bar either way,
-           so this is a shortcut and never a silent decision (§6). */
+           so this is a shortcut and never a silent decision (§6).
+
+           AND ONLY WHILE THIS BACKUP IS PURELY A DROP-IN. Once any of its classes
+           has been created in the document there are two sources for the same
+           class — the saved one and the snapshot it came from — and skipping
+           straight to printing from the snapshot would be choosing the staler of
+           the two on the teacher's behalf, with nothing on screen saying which
+           was used. */
+        var seeded = state.doc && Y.planbookPlan(state.doc, parsed.planbook)
+          .classes.some(function (c) { return c.exists; });
         var remembered = null;
-        if (getPref('openYear') === parsed.planbook.year) {
+        if (!seeded && getPref('openYear') === parsed.planbook.year) {
           planbookClasses(parsed.planbook).forEach(function (c) {
             if (c.id === getPref('openClassId') && (c.roster || []).length) remembered = c.id;
           });
@@ -1323,46 +1332,159 @@
     renderClassBar();
   }
 
-  function renderClassPicker() {
-    var doc = state.planbook;
-    var classes = planbookClasses(doc);
-    var archived = doc.classes.length - classes.length;
+  /* ── A Planbook backup, offered as classes to create ──────────────────────
+     THIS IS A CHANGE OF PURPOSE. A backup used to be browsed and printed from,
+     saving nothing; now the first thing it offers is to create its classes in
+     this year, fully populated. Printing one without saving is still there on
+     every row, because §22 keeps that path for a roster that brings its own
+     identity — but it is the smaller of the two now, the same way drop-in went
+     underneath the class list.
 
-    var rows = classes.map(function (c) {
-      var n = (c.roster || []).length;
-      return '<div class="row">' +
-        '<div class="row-main">' +
-          '<div class="row-name">' + escapeText(c.name) + '</div>' +
-          '<div class="row-sub">' + n + ' student' + (n === 1 ? '' : 's') + '</div>' +
-        '</div>' +
-        (n
-          ? '<button class="class-action-btn" data-class="' + escapeText(c.id) + '">Use this class</button>'
-          : '<span class="badge badge-bad">✕ Empty</span>') +
-      '</div>';
+     The screen lives in the class panel rather than the roster list because
+     everything it does writes to the document, and every other thing that writes
+     to the document asks from here. */
+  function renderClassPicker() {
+    var pb = state.planbook;
+    var plan = Y.planbookPlan(state.doc || Y.newYearDocument(pb.year), pb);
+    var archived = pb.classes.length - plan.classes.length;
+    var creatable = plan.classes.filter(function (c) { return !c.exists && c.count; });
+
+    var rows = plan.classes.map(function (c) {
+      var note;
+      if (!c.count) note = 'No students in the backup';
+      else if (c.exists) note = c.count + ' student' + (c.count === 1 ? '' : 's') +
+        ' · already created from this backup';
+      else note = c.count + ' student' + (c.count === 1 ? '' : 's') +
+        (c.nameClash ? ' · there is already a class called ' + escapeText(c.nameClash) +
+          ', and this would be a second one' : '');
+
+      return '<li style="margin-top:6px;">' +
+        '<label style="display:flex; gap:8px; align-items:baseline;">' +
+          (c.exists || !c.count
+            ? '<span style="width:13px;">&nbsp;</span>'
+            : '<input type="checkbox" data-seed-id="' + escapeText(c.id) + '" checked>') +
+          '<span><strong style="display:inline">' + escapeText(c.name) + '</strong> · ' +
+            note + '</span>' +
+        '</label>' +
+        '<span class="notice-actions" style="margin-top:4px;">' +
+          (c.exists
+            ? '<button class="class-action-btn" data-pb-update="' + escapeText(c.id) +
+              '">Update it from this backup</button>' : '') +
+          (c.count
+            ? '<button class="class-action-btn" data-pb-print="' + escapeText(c.id) +
+              '">Print without saving</button>' : '') +
+        '</span>' +
+      '</li>';
     }).join('');
 
-    $('rosterList').innerHTML =
-      '<div class="row" style="background:#f8f9fb;">' +
-        '<div class="row-main"><div class="row-sub">' +
-          'Planbook year ' + escapeText(doc.year) + ' · ' + classes.length + ' class' +
-          (classes.length === 1 ? '' : 'es') +
-          (archived ? ' · ' + archived + ' archived, not shown' : '') +
-          '. Pick the one you are printing for.' +
-        '</div></div>' +
-      '</div>' + rows;
+    $('rosterList').innerHTML = '';
+    $('classPanel').innerHTML =
+      '<div class="notice">' +
+        '<strong>Planbook ' + escapeText(pb.year) + ' · ' + plan.classes.length +
+          ' class' + (plan.classes.length === 1 ? '' : 'es') +
+          (archived ? ', and ' + archived + ' archived that are not shown' : '') +
+        '</strong>' +
+        'Create them here and the rosters are kept on this computer, so printing in ' +
+        'November needs no file at all. <strong style="display:inline">Planbook’s ' +
+        'student IDs come across unchanged</strong>, which is what makes a later ' +
+        'update match the same students instead of duplicating everybody. Portfolio ' +
+        'folders are left empty — Planbook has none to give.' +
+        '<ul class="notice-list" style="list-style:none; margin-left:0;">' + rows + '</ul>' +
+        '<div class="notice-actions">' +
+          (creatable.length
+            ? '<button class="class-action-btn primary" id="seedYes">Create</button>' : '') +
+          '<button class="class-action-btn" id="seedNo">' +
+            (state.doc && state.doc.classes.length ? 'Back to my classes' : 'Cancel') +
+          '</button>' +
+        '</div>' +
+      '</div>';
 
-    /* Bound per render rather than delegated, matching how the roster panel's own
-       Save button is wired below. */
-    var buttons = $('rosterList').querySelectorAll('[data-class]');
-    for (var i = 0; i < buttons.length; i++) {
-      buttons[i].addEventListener('click', function (e) {
-        openPlanbookClass(e.currentTarget.getAttribute('data-class'));
-      });
+    var boxes = $('classPanel').querySelectorAll('[data-seed-id]');
+    var ticked = function () {
+      var out = [];
+      for (var i = 0; i < boxes.length; i++) {
+        if (boxes[i].checked) out.push(boxes[i].getAttribute('data-seed-id'));
+      }
+      return out;
+    };
+    if (creatable.length) {
+      var recount = function () {
+        var n = ticked().length;
+        $('seedYes').disabled = n === 0;
+        $('seedYes').textContent = n === 0 ? 'Create nothing'
+          : 'Create ' + n + ' class' + (n === 1 ? '' : 'es');
+      };
+      for (var i = 0; i < boxes.length; i++) boxes[i].addEventListener('change', recount);
+      recount();
+      $('seedYes').addEventListener('click', function () { seedClasses(ticked()); });
     }
+
+    $('seedNo').addEventListener('click', function () {
+      state.planbook = null;
+      renderClassBar();
+      renderClassPanel();
+    });
+    bind($('classPanel'), 'data-pb-print', function (id) { openPlanbookClass(id); });
+    bind($('classPanel'), 'data-pb-update', function (id) { updateFromPlanbook(id); });
 
     $('status').className = 'save-indicator saving';
     $('status').textContent = '↻ Choose a class';
     render();
+  }
+
+  function seedClasses(classIds) {
+    if (!classIds.length) return;
+    var doc = ensureDoc();
+    var summary;
+    try {
+      summary = Y.seedFromPlanbook(doc, state.planbook, classIds);
+    } catch (err) {
+      return failImport(err.message, function () { renderClassPicker(); });
+    }
+    var ok = writeDoc(doc);
+
+    /* The backup has done its job. Leaving it loaded would leave two sources for
+       the same class on screen at once — the saved one and the snapshot it came
+       from — and there would be no way to tell which a tab was printing from. */
+    state.planbook = null;
+    state.classId = null;
+    state.roster = null;
+    renderClassBar();
+    renderClassPanel();
+    render();
+
+    $('classPanel').insertAdjacentHTML('afterbegin', ok
+      ? '<div class="notice"><strong>' + summary.classes + ' class' +
+        (summary.classes === 1 ? '' : 'es') + ' created — ' +
+        escapeText(summary.names.join('; ')) + '.</strong>' +
+        summary.studentsAdded + ' student' + (summary.studentsAdded === 1 ? '' : 's') +
+        ' added to this year' +
+        (summary.studentsReused
+          ? ', and ' + summary.studentsReused + ' who are in more than one of these ' +
+            'classes were added once and put on both rosters'
+          : '') +
+        '. They keep the student IDs Planbook gave them, so nothing here has been ' +
+        're-numbered. Take an export — this computer is now the only place these ' +
+        'classes exist (§23).</div>'
+      : '<div class="notice notice-bad"><strong>Created on screen, but not saved.</strong>' +
+        'This browser is refusing to store anything, so these classes will be gone when ' +
+        'the tab closes. The backup file is untouched.</div>');
+  }
+
+  /* An already-seeded class, updated from a newer backup — the same reconcile the
+     CSV path uses, which is the entire reason Planbook's ids are kept. */
+  function updateFromPlanbook(classId) {
+    var pbClass = null;
+    state.planbook.classes.forEach(function (c) { if (c.id === classId) pbClass = c; });
+    if (!pbClass) return fail('That class is no longer in this backup.');
+
+    var plan;
+    try {
+      plan = Y.reconcile(state.doc, classId, Y.planbookStudents(state.planbook, pbClass));
+    } catch (err) {
+      return failImport(err.message, function () { renderClassPicker(); });
+    }
+    confirmReconcile(plan);
   }
 
   /* Quote-aware, because the column that matters most is usually called
