@@ -1,8 +1,7 @@
 # Roadmap
 
-**Status: phase 1 complete. Phase 2 part-built — store, classes, CSV import, minting,
-archive, export, year import, add/drop, re-import, Planbook seeding and the install
-prompt are all in.**
+**Status: phases 1 and 2 complete. Phase 3 is next, and it is gated on a class and a
+teaching day rather than on work.**
 Running on localhost (`cd tools && npm start`) until it is fit to share.
 Last updated 15 Sep 2026.
 
@@ -193,6 +192,24 @@ backup does. Add/drop, re-import and the Planbook path follow.
 touched in between; a student moved between two classes prints on the right sheet; a class
 built from a CSV with no IDs cannot lose them silently; and the whole year survives a
 browser restart and comes back from its own export file.
+
+**Done — 15 Sep 2026.** All four, driven in a real browser by `npm run test:ui`: a year
+exported and imported back comes up with the same students and the same folder IDs after a
+reload; a student moved between two classes builds one sheet in the new class carrying
+`placeholder-2026-0002|SRE1-2026-09-18|2026-0002` and none in the old; a blank-ID CSV into
+a class that has a roster is refused outright; and the whole Planbook sample seeds three
+classes and 54 students without spending a single generated ID.
+
+That suite is the other half of the phase. `app/year.js` is pure and covered in
+milliseconds, but the layer that decides *which file is being imported and into what* is
+only reachable from a browser — and its first run found four faults every pure test had
+passed over, each of them the kind that writes a student record somewhere quietly wrong.
+
+**Still owed, and none of it is code.** Everything here was verified in headless Chrome at
+`localhost:8080`. It has never run on the deployed site, never on iOS — which is the one
+browser the install row exists for, and the one §23 did not measure — and no year has yet
+crossed between two actual computers on its export file. The first tester's first day is
+where those get found.
 
 **Out of scope:** anything touching Google. Syncing back to Planbook. A year picker — the
 `year` field goes in now because retrofitting it is a migration, but there is no second year

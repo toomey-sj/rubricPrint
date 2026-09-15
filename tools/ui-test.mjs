@@ -444,6 +444,55 @@ section('Saying it should be installed');
     'naming the week, which is the whole reason the row exists');
 }
 
+/* ══ A moved student prints on the right sheet ═══════════════════════════════
+   Phase 2's own done-when, and the only one that reaches paper: the roster edits
+   above are worth nothing if the sheets the print dialog would produce still
+   carry the old class. Checked through dataset.payload, which is the string that
+   goes into the QR and therefore the thing the splitter will read back. */
+section('A moved student prints on the right sheet');
+{
+  await plant(YEAR());
+  await click('[data-open-class="c_p1"]');
+  await settle();
+  await click('[data-move-student="2026-0002"]');
+  await settle();
+  await click('[data-move-to="c_p3"]');
+  await settle();
+
+  /* The paste is the app's only content route, and `input` is what it listens to
+     besides a real clipboard event. */
+  await page.eval(`(function(){
+    ['pasteFront', 'pasteBack'].forEach(function (id) {
+      var box = document.getElementById(id);
+      box.innerHTML = '<p>Assignment text</p>';
+      box.dispatchEvent(new Event('input', { bubbles: true }));
+    });
+  })()`);
+  await settle();
+
+  const payloads = () => page.eval(
+    "Array.prototype.map.call(document.querySelectorAll('.sheet[data-side=front]')," +
+    ' function (s) { return s.dataset.payload; })');
+
+  let built = await payloads();
+  check(built.length === 2, 'Period 1 builds a sheet each for the two who are left',
+    built.length + ' fronts');
+  check(built.join(' ').indexOf('2026-0002') === -1,
+    'and none of them is the student who moved');
+  check(await page.eval("document.querySelectorAll('.sheet').length") === 4,
+    'two pages per student, which is the contract the duplex run depends on');
+
+  await click('[data-open-class="c_p3"]');
+  await settle();
+  built = await payloads();
+  check(built.length === 1, 'Period 3 builds exactly one');
+  check(built[0] === 'placeholder-2026-0002|SRE1-2026-09-18|2026-0002',
+    'carrying that student’s own ID, and a folder synthesised at print time',
+    built[0]);
+  check(/✓ OK/.test(await page.eval("document.getElementById('preflight').innerText")),
+    'and the pre-flight passes on both sides');
+}
+
 /* The row shows only a folder's last six characters. For a student with no
    folder those are the tail of their own ID, which is what a placeholder
    synthesised at print time looks like and what nothing else would. */
