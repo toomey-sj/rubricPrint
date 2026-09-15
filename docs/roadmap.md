@@ -127,6 +127,19 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
       ids so a later re-import reconciles instead of duplicating everyone.
 - [ ] **Add/drop.** Move a student between classes, or drop them from one. A drop leaves the
       student in the document, because a sheet already printed still has to resolve.
+- [ ] **Re-import reconciles; it never replaces.** An updated CSV into an existing class
+      matches on student ID, adds the new, and lists anyone in the class but not in the file
+      as a *proposed* drop to confirm (§6). Replacing wholesale was rejected: it silently
+      drops the missing, and on a class built from a blank-ID CSV it destroys the generated
+      IDs — which breaks every sheet already printed for them. **A blank-ID file cannot be
+      reconciled at all**, because there is nothing to match on; it is refused, pointing at
+      the ID-filled file the app handed back, which is the second job that file exists to do
+      (§21).
+- [ ] **Archive a class; nothing is deleted.** Archiving takes it out of the bar and keeps
+      everything — the roster stays, and sheets already printed still split. **v1 has no
+      destructive action at all**, which is worth having on purpose while the store is new
+      and the export habit is not yet formed. Delete, with a confirm that counts what it
+      destroys, is a later decision rather than an omission.
 - [ ] **Export the year, and say when you last did.** Once the app owns the roster, losing
       the store loses the year. Offer the file, record that it was offered, keep saying so —
       but do not hard-block, because a gate satisfied by dismissing a dialog reads as noise.
@@ -134,6 +147,12 @@ to obey: [decisions.md §20–§22](decisions.md). It reverses §8.
       print and be forgotten; one whose identity the app minted is kept. The class list
       becomes the front door and drop-in the smaller path; a loaded drop-in roster can be
       promoted with one button, and its tab says it is unsaved.
+
+**Order of build.** The store and its migration ladder, then create-a-class and CSV import,
+then ID generation with its confirmation, then **export** — and export lands in that first
+shippable slice rather than later, because the app should not own a roster before there is
+a way to get it back out. Planbook's rule: no feature that writes student data ships before
+backup does. Add/drop, re-import and the Planbook path follow.
 
 **Done when:** a class created in September prints a rubric in November with no file
 touched in between; a student moved between two classes prints on the right sheet; a class
