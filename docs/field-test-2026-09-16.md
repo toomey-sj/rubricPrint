@@ -90,19 +90,70 @@ requirement or an appetite.
 
 **Capping the JS heap does not reduce the peak. It raises it.** All three runs completed
 and found 150 of 150, so this is not a cliff — but it does settle where the memory lives:
-**not in V8's old space**, which is the only thing that flag governs. It is native — the
-canvas buffers `@napi-rs/canvas` hands to jsQR, and pdf.js's own page rendering. A page
-rendered at 300 DPI is 2550 × 3300 px, which is 33.6 MB at four bytes a pixel before
-anything else happens.
+**not in V8's old space**, which is the only thing that flag governs.
+
+### Where it actually lives
+
+Asked directly — is this the scan file, or something during the split? — it is neither the
+file nor one big allocation. **It is one image buffer per page, and they pile up.**
+
+| | |
+|---|---|
+| The scan file itself | 16.1 MB for 150 students (3.2 MB for 30). Loaded twice, and irrelevant either way. |
+| Normal pass, per page | the crop only — 893 × 990 px at 300 DPI = **3.4 MB** |
+| Deep pass, per page | the whole page at 200 DPI — 1700 × 2200 px = **14.3 MB** |
+
+900 pages × 3.4 MB is **2.96 GB**, against ~4.8 MB per page actually observed; the
+remainder is pdf.js's own per-page work and the output packets. So the peak is not one
+enormous thing, it is nine hundred medium ones that should have been released and were not.
+`renderPage` already calls `page.cleanup()`, so pdf.js's side *is* released — it is the
+canvas bitmaps that linger, because they are native allocations whose true size V8 cannot
+see, so nothing ever makes it feel urgent about collecting them. Which is also why shrinking
+the JS heap made the peak worse: the JS heap was never the thing filling up.
+
+**An earlier draft of this note said a rendered page is 2550 × 3300 px / 33.6 MB.** That is
+true only of the deep pass, and overstated the common case fourfold — the normal pass never
+renders a whole page at all.
+
+### One class at a time, which is what actually happens
+
+The figures above are a whole year group in a single scan. Nobody does that: a class is
+printed, collected and scanned as its own stack. Measured at **35 students — a normal
+class**, 210 pages:
+
+| | time | peak |
+|---|---|---|
+| print the sheets | 6.3 s | 105 MB |
+| `verify-sheet` | 6.4 s | 734 MB |
+| **split, normal** | **23.7 s** | **1.7 GB** — 35 of 35 |
+| split, one code scribbled | 122.5 s | 3.5 GB — refused, exit 1 |
+
+**1.7 GB and twenty-four seconds is a non-issue**, less than a browser with a few tabs open.
+
+The bad-day row is the one worth knowing: **a code that will not decode roughly doubles the
+memory as well as the time**, because the deep pass renders whole pages rather than corner
+crops. 3.5 GB is comfortable on 8 GB of RAM and would struggle on 4 GB.
+
+**And that is the case the teacher's own check removes.** A damaged code spotted while
+grading costs one reprinted cover sheet — the symbol is derived from
+`folderId|runId|studentId` rather than stored, so a reprint is byte-identical and
+interchangeable with the original (decisions.md, Known limits). §13's grade-then-scan order
+already puts a human in front of every cover sheet before the scanner sees it, so this is a
+check that fits the existing workflow rather than an extra step.
+
+It does not eliminate the deep pass, because the failures that survive a visual check are
+the ones that happen *after* it: feeder skew, a fold from handling, a toner streak, the
+scanner's own thresholding. Those need paper to measure.
 
 Two consequences, and both are for later phases rather than now:
 
 - **`--max-old-space-size` is not the lever**, so any future fix has to release the native
   buffers — rendering at the crop rather than the page, or `page.cleanup()` per page, or
   reusing one canvas. Untested, all three.
-- **A 4 GB laptop will not split a 150-student scan.** An 8 GB one will, with the fan on.
-  Nobody has been handed this yet, so nothing is broken; it is a number that has to be in
-  the tester's guide before anyone is.
+- **A 4 GB laptop will not split a 150-student scan** in one go. An 8 GB one will, with the
+  fan on. One class at a time is fine on anything — see above — so the number that belongs
+  in the tester's guide is not the scary one: it is *split one class per scan, and a
+  scribbled code costs you double*.
 
 **Not measured:** whether the peak is resident pages or reserved address space under
 Windows' accounting, and whether the same figures hold on macOS. `WorkingSet64` is resident
@@ -145,7 +196,7 @@ Nothing, deliberately. Phase 3's scope is *measure first; the fixes are their ow
 sized by what turns up*. Three things turned up:
 
 1. The memory ceiling, which belongs in the tester's guide (phase 4) and may justify
-   rendering work later.
+   rendering work later — though a normal class never approaches it.
 2. The silent fifteen minutes during a deep pass, which is a phase 4 error-message problem —
    the splitter already knows how many pages it is about to re-read.
 3. `verify-sheet` costing more per page than the splitter, which nobody had noticed because

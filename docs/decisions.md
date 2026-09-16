@@ -729,9 +729,18 @@ manual, asks before it drops anybody, and is the only reconciliation there is.
   peak rather than lowering it** — the memory is native, in the canvas buffers handed to
   jsQR and in pdf.js's page rendering, so `--max-old-space-size` does nothing.
 
+  **A normal class never gets near it.** 35 students is 210 pages, which splits in 24
+  seconds at 1.7 GB — and one class per scan is what actually happens, since each is printed,
+  collected and scanned as its own stack. The figure that matters to a teacher is the other
+  one: a code that will not decode roughly doubles both time and memory (122 s, 3.5 GB at
+  35 students), because the deep pass renders whole pages rather than corner crops. Checking
+  the code is intact while grading and reprinting the cover sheet — byte-identical, see
+  above — keeps the split on the cheap path, and §13's grade-then-scan order already puts a
+  human in front of every sheet.
+
   Handled by saying so rather than by fixing it: a 4 GB machine will not split a full year
-  group, an 8 GB one will, and that belongs in the tester's guide before anyone is handed
-  this. The fix, when it is worth doing, is releasing the native buffers — rendering at the
+  group in one go, an 8 GB one will, and that belongs in the tester's guide before anyone is
+  handed this. The fix, when it is worth doing, is releasing the native buffers — rendering at the
   crop rather than the page, `page.cleanup()` per page, or one reused canvas. All three
   untested.
 - **Handling wear is a near-non-issue.** Sheets live one class period: handed out at the
