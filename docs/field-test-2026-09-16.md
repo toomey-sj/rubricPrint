@@ -134,6 +134,34 @@ The bad-day row is the one worth knowing: **a code that will not decode roughly 
 memory as well as the time**, because the deep pass renders whole pages rather than corner
 crops. 3.5 GB is comfortable on 8 GB of RAM and would struggle on 4 GB.
 
+#### What counts as a bad day, exactly
+
+One condition, and it is narrower than "something went wrong":
+
+    !result.ok && !deep && result.summary.packetsFound < result.summary.packetsExpected
+
+**At least one student on the roster has no readable code anywhere in the scan.** Nothing
+else does it. Both of the other break modes still account for every student, and both refuse
+in about thirty seconds:
+
+| went wrong | everyone still found? | cost at 35 students |
+|---|---|---|
+| stray pages before the first code | yes | 30.0 s, no deep pass |
+| a sheet fed twice | yes | 30.8 s, no deep pass |
+| one code scribbled out | **no** | 175.7 s, deep pass |
+
+**Why it costs so much is not obvious.** The deep pass re-renders every page that did not
+decode — and in a stack of 210 pages that is about 176 of them, because only the 34 fronts
+that read are skipped. Backs and handwritten work are *meant* to carry no code, so
+"undecoded" is roughly 83% of any scan. One missing student forces a full-page re-read of
+almost the whole stack: 176 x 14.3 MB is 2.5 GB, on top of the first pass's 0.7 GB, which is
+where the measured 3.5 GB comes from.
+
+That is the right trade — the expensive look is reserved for the one case where it might
+actually recover somebody — but two other things reach it. `--deep` takes that path on every
+undecoded page by design. And **splitting against the wrong roster makes every student
+missing**, so a mistyped `--roster` pays the full cost before saying so.
+
 **And that is the case the teacher's own check removes.** A damaged code spotted while
 grading costs one reprinted cover sheet — the symbol is derived from
 `folderId|runId|studentId` rather than stored, so a reprint is byte-identical and
