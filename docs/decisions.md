@@ -784,6 +784,22 @@ should read this section before deciding whether Drive filing agrees or delibera
 diverges — and whichever way it goes, filing must never silently absorb an `unresolved/`
 bundle as if it were a clean packet.
 
+**The exact rule, since `packets.mjs`'s issue kinds do not all deserve the same answer:**
+
+| issue | today | under §28 |
+|---|---|---|
+| `leading_pages` | refuses the whole run | its own `unresolved/` bundle, unattributed |
+| `unreadable_payload`, `wrong_run`, `unknown_student` | refuses the whole run | the page is still glued to the packet it landed in (unchanged), but doing so now also flags **that packet** — its boundary is no longer trustworthy, so it quarantines too |
+| `duplicate_code` | refuses the whole run, though both parts were already computed with `.part`/`.partsTotal` | **quarantines both parts.** We know whose they are, but not which is the real submission — a reprint, an accidental double-feed, and two runs of the same assignment look identical at this layer. Auto-picking one is exactly the invisible judgment call this section exists to stop making for a person |
+| `suspicious_length` | warning; still filed | **quarantines** (already stated above) |
+| `odd_page_count` | warning; still filed | **unchanged — still filed.** A dropped or extra page inside an otherwise unambiguous boundary is a different kind of doubt than "which student" or "which run" — the teacher will see the actual count the moment they open the packet, and quarantining every off-by-one would bury the genuine misattributions in noise |
+| `folder_changed` | warning; still filed | **unchanged — still filed.** This warning is the folder-ID deferral working as designed (see the comment beside it), not a sign of anything wrong |
+| `roster_id_collision` | refuses before any page is read | **unchanged.** Already caught in `roster.mjs` before `split.mjs` opens the scan at all — a defect in the roster itself, not in one packet, and quarantining a packet cannot fix it |
+
+So: **a packet quarantines if it carries an error-severity flag, or the warning-severity
+`suspicious_length` flag. Every other packet files as it does today**, with any remaining
+warnings noted in its report row exactly as now.
+
 **Deferred, on purpose:** whether an over-long `suspicious_length` packet should be split at
 its likely internal boundary before quarantining (finer information, more machinery, and a
 second guess sitting next to the first); and whether `unresolved/` should be a flat pile or
