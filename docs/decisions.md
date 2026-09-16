@@ -709,6 +709,89 @@ manual, asks before it drops anybody, and is the only reconciliation there is.
 
 ---
 
+## 28 · A missing student quarantines a packet; it no longer stops the run
+
+Proposed 16 Sep 2026, not yet built. Reasoning recorded before `split.mjs` is touched,
+because it changes exit-code meaning, the filing convention, and the report schema —
+three things CLAUDE.md lists as needing their reasoning here rather than in a commit.
+
+**The trigger measured in [field-test-2026-09-16.md](field-test-2026-09-16.md):** one
+student with no readable code anywhere in the scan makes the splitter write *nothing* — not
+34 of 35, zero — after a deep pass that re-renders roughly 83% of the stack at full size
+(122 s and 3.5 GB at 35 students; extrapolates to ~15 silent minutes at 150). The teacher is
+then handed five page crops, told to find the one with a routing square, read a name off it
+by eye, and retype `--force-code <page>=<studentId>` against a wall of every ID on the
+roster — followed by a full re-split.
+
+**The premise underneath that design has stopped holding.** It treated any missing student
+as a single undifferentiated failure needing the most thorough possible recovery. But the
+overwhelmingly common cause is not a corrupted scan — **it is a student who was absent.**
+That is not a defect to recover from at any cost; it is Tuesday. Punishing thirty-four
+correct packets for one ordinary, expected gap is punishing the wrong thing.
+
+**So the run always finishes, and it separates what it is sure of from what it is not:**
+
+- Every packet with a clean boundary — one code in, the next code or end of scan out —
+  files exactly as it does today. §3's boundary rule is untouched; nothing about how a
+  packet is built changes.
+- Every packet an issue attaches to — `unreadable_payload`, `unknown_student`,
+  `suspicious_length`, `leading_pages` — goes to an `unresolved/` folder instead, as the
+  actual page-range PDF (`pages-007-018.pdf`), not a crop and not discarded. `suspicious_length`
+  stops being a mere warning on an otherwise-filed packet: **a packet flagged as probably
+  having swallowed its neighbour is quarantined with its neighbour's absence**, because
+  filing it clean would be exactly the invisible mis-filing the original rule existed to
+  prevent.
+- The report states the reconciling arithmetic on every run: **pages filed + pages
+  unresolved == pages scanned.** Always checkable, same shape as the blank-back count
+  already reconciling against pages scanned (§5).
+
+**This does not reverse "nothing is written when a student is missing."** It answers what
+that principle actually protects against, which the word *invisible* in it already said:
+a half-correct split is dangerous when the gap is silent. A named, separated, page-numbered
+bundle sitting in `unresolved/` is the opposite of silent. §6's rule — the app proposes, a
+person confirms — was always the better fit here than an outright refusal; this makes the
+splitter follow it the same way every screen in `app/` already does.
+
+**Resolution can skip the app entirely, and that is the point, not a gap.** Today, recovering
+a miss means reading a crop, typing a command, and waiting for a full re-split. Under this
+model a teacher opens `unresolved/pages-007-018.pdf` in any viewer, recognises the
+handwriting, and moves the file into `packets/Angelou-Ralph-2026-0002/` by hand — the same
+paper-handling instinct that already runs the rest of the desk-side half. No re-render, no
+`--force-code`, no thirty-five-ID wall of text.
+
+**The honest cost of that: the report never learns about a manual resolution.** Once a
+teacher hand-files an unresolved bundle, `report.json` still says "1 unresolved" forever, and
+the archived reconciliation never balances against what is actually on disk. Accepted rather
+than solved, on the same grounds as §17 not copying the scan into the archive: **the report is
+a record of what the machine did**, not a live index of the class set — a teacher's own
+filing is exactly as unrecorded today as a grade written in pen on the paper. A cheap
+`--resolve <page-range>=<studentId>` that only renames-and-moves an existing `unresolved/`
+file — no re-render, no re-scan — stays open as a later addition if the gap turns out to
+matter in practice; not built now because nothing has asked for it yet.
+
+**Exit codes keep their documented meaning, but what accompanies exit 1 changes.** 0 means
+every page landed in a named student's folder. 1 still means the paper had a problem — but
+now names how many packets filed and how many are sitting in `unresolved/`, rather than
+guaranteeing zero were written. 2 is unchanged: the command was wrong. Anything that scripts
+around the splitter and currently treats exit 1 as "nothing happened" has to be told this
+changed.
+
+**Couples to an open decision, deliberately.** The roadmap lists *"Partial filing or
+all-or-nothing"* as awaiting a call for phase 6, on the grounds that splitting and filing had
+opposite rules and that was worth making deliberate rather than accidental. This *is* that
+call, made for splitting: a loud, per-packet skip beats an all-or-nothing refusal. Phase 6
+should read this section before deciding whether Drive filing agrees or deliberately
+diverges — and whichever way it goes, filing must never silently absorb an `unresolved/`
+bundle as if it were a clean packet.
+
+**Deferred, on purpose:** whether an over-long `suspicious_length` packet should be split at
+its likely internal boundary before quarantining (finer information, more machinery, and a
+second guess sitting next to the first); and whether `unresolved/` should be a flat pile or
+grouped by likely cause. Neither is needed to ship the core change, and guessing at either
+now would be building ahead of a real case.
+
+---
+
 ## Deliberately not built
 
 | | note |

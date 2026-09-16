@@ -35,7 +35,13 @@ loop runs for a term on placeholder IDs, filed by hand.
 |---|---|---|
 | Where the house style ends | phase 5 | Full fidelity puts a tester's fonts and colours on paper. Structure-yes / appearance-no is the likely middle. |
 | My Drive or a shared drive | phase 6 | Shared drives change ownership — files belong to the drive, better for continuity when a teacher leaves. Decide before the root folder is created. |
-| Partial filing or all-or-nothing | phase 6 | Splitting refuses everything on any error. Filing is per-student independent, so a loud skip is coherent. Opposite rules, so make it deliberate. |
+| Whether filing agrees with splitting's new answer | phase 6 | §28 answered this for splitting — a loud, per-packet skip beats all-or-nothing. Phase 6 reads that section before deciding whether filing follows it or deliberately diverges. |
+
+**Queued, decided but not built:** a missing student currently stops the whole split — nothing
+is written, and recovery means reading a page crop, typing a command by hand, and waiting for
+a full re-run. §28 changes this: clean packets always file, anything an issue attaches to goes
+to a page-numbered `unresolved/` bundle instead, and a teacher can resolve one by hand without
+touching the app at all. Reasoning: [decisions.md §28](decisions.md). Not yet implemented.
 
 ## Settled
 
