@@ -722,6 +722,18 @@ manual, asks before it drops anybody, and is the only reconciliation there is.
 
 ## Known limits, and how they are handled
 
+- **The splitter wants about 4.3 GB to split a 150-student scan**, and `verify-sheet` wants
+  2.6 GB to check the sheets for one. Measured 16 Sep 2026 across 90 to 900 pages
+  ([field-test-2026-09-16.md](field-test-2026-09-16.md)): time is linear at ~0.2 s a page,
+  memory is not the flat cost it was assumed to be, and **capping the JS heap raises the
+  peak rather than lowering it** — the memory is native, in the canvas buffers handed to
+  jsQR and in pdf.js's page rendering, so `--max-old-space-size` does nothing.
+
+  Handled by saying so rather than by fixing it: a 4 GB machine will not split a full year
+  group, an 8 GB one will, and that belongs in the tester's guide before anyone is handed
+  this. The fix, when it is worth doing, is releasing the native buffers — rendering at the
+  crop rather than the page, `page.cleanup()` per page, or one reused canvas. All three
+  untested.
 - **Handling wear is a near-non-issue.** Sheets live one class period: handed out at the
   start, collected at the end, so they do not go home and do not get folded into a
   backpack. Take-home essays are seen digitally, so no printed sheet travels at all.

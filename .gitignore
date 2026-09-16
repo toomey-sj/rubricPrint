@@ -2,6 +2,14 @@ node_modules/
 data/out/
 data/*.pdf
 
+# Synthetic rehearsal classes. tools/make-class.mjs is deterministic — --students
+# 30 is the same thirty names every time — so a commit would preserve nothing a
+# single command cannot rebuild. Kept out mostly for the habit: a REAL class lands
+# in data/ in exactly this shape, and a folder that sometimes holds committed
+# rosters is a folder where one gets committed by accident.
+data/class-*.json
+data/class-*.csv
+
 # Per-run archives: each holds a report and a copy of the roster that produced
 # it, so this is real student data and it stays local.
 data/runs/

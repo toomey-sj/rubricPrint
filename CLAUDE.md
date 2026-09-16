@@ -95,6 +95,9 @@ node qr-selftest.mjs  --roster ../data/roster-sample.json   # encode all payload
 node verify-sheet.mjs ../data/out/sheets.pdf --roster ../data/class.json --run SRE1-2026-09-18
 node make-test-scan.mjs --roster ../data/class.json         # synthesize a duplex scan from a printed sheets.pdf
 
+node make-class.mjs --students 30 --name "Period 1" --out ../data/class-30.json
+node print-sheets.mjs --roster ../data/class-30.json --out ../data/out/sheets-30.pdf
+
 npm start                  # http://localhost:8080/ — and it must be 8080
 npm run test:ui            # the app's own screens, in a real browser
 ```
@@ -110,6 +113,18 @@ a folder whose other half is dependency-free on purpose.
 `verify-sheet.mjs` is the one that earns its keep: it reads the printed PDF through the same
 crop the splitter uses, proving the codes are readable and correctly placed before a sheet of
 paper is spent. `make-test-scan.mjs --break leading|missed|duplicate` rehearses each failure.
+
+**`print-sheets.mjs` is how a sheets PDF gets made now.** Every one in `data/out` used to be
+a person pressing Ctrl+P, which is unrepeatable and does not scale past a class. It drives
+the served app through `Page.printToPDF` at the documented settings — margin 0, backgrounds
+off, the page's own `@page` rule — so it exercises the same rendering path the print dialog
+does. Needs `npm start` and a browser, same as `test:ui`. `make-class.mjs` feeds it a
+synthetic class of any size, deterministically, and refuses to write a roster carrying a
+repeated ID or name.
+
+**What that costs at scale is measured**, not assumed: time is linear at ~0.2 s a page, and
+memory reaches 4.3 GB on a 150-student scan — native buffers, so `--max-old-space-size` does
+not touch it. [docs/field-test-2026-09-16.md](docs/field-test-2026-09-16.md).
 
 ## Traps
 

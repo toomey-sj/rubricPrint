@@ -1,9 +1,11 @@
 # Roadmap
 
-**Status: phases 1 and 2 complete. Phase 3 is next, and it is gated on a class and a
-teaching day rather than on work.**
+**Status: phases 1 and 2 complete. Phase 3 part-done — everything that can be measured
+without a class has been, and the numbers are in
+[field-test-2026-09-16.md](field-test-2026-09-16.md). What is left of it needs a real
+class, real paper and a teaching day.**
 Running on localhost (`cd tools && npm start`) until it is fit to share.
-Last updated 15 Sep 2026.
+Last updated 16 Sep 2026.
 
 Shareable view of this plan, with the reasoning attached:
 <https://claude.ai/code/artifact/02464f20-4a2d-4ce4-bc4d-b7e5f92d99fd>
@@ -90,9 +92,12 @@ three break modes refuse and write nothing; a scribbled-out code recovers via
 `--force-code`; and sheets printed on placeholder folder IDs split cleanly against a roster
 holding the real ones, reporting `folder_changed` once as a warning. Both suites pass.
 
-**Still owed:** the same run against a *real* thirty-student roster and a real print. The
-synthetic sheets were generated straight from `app/qr.js` at the sheet's own geometry, which
-proves the tooling but not the print dialog.
+**Still owed:** the same run against a *real* thirty-student roster and a real print.
+~~The synthetic sheets were generated straight from `app/qr.js` at the sheet's own geometry,
+which proves the tooling but not the print dialog.~~ **Half paid, 16 Sep 2026** — sheets now
+print through the browser's own print path via `tools/print-sheets.mjs` and verify clean at
+15, 30, 60 and 150 students. What is still unproven is paper: toner, feeder skew and a
+scanner's own binarisation.
 
 **Out of scope:** anything touching Google. Any change to the sheet layout, the QR geometry,
 or the crop.
@@ -235,15 +240,32 @@ The open question in [decisions.md](decisions.md) is that a full class is untest
 suggests a scaling problem — the splitter is linear in pages — but no feeder has been loaded
 deep. Cheapest unknown in the project to close, most expensive to be wrong about.
 
-- [ ] Synthetic rehearsal: `make-test-scan` at 30 students, then 150 across five sections.
-      Time the split, watch memory, confirm linearity rather than assuming it.
-- [ ] All three break modes at 30 — `--break leading|missed|duplicate`. At five students a
-      swallowed packet is obvious; at thirty the median-length heuristic in `packets.mjs` has
-      real data to work against, which is where it should be checked.
+- [x] Synthetic rehearsal at 15, 30, 60 and 150. **Time is linear** — 0.16 to 0.22 s per
+      page across a tenfold range, so a 150-student scan splits in 3m16s, and every packet
+      was found at every size. **Memory is the finding:** 925 MB at 90 pages rising to
+      4.3 GB at 900, in both the splitter and `verify-sheet`, and capping the JS heap
+      *raises* the peak rather than lowering it — so it is native buffers rather than V8's
+      old space, and `--max-old-space-size` is not the lever. A 4 GB laptop will not split a
+      full year group. Numbers and method: [field-test-2026-09-16.md](field-test-2026-09-16.md).
+- [x] All three break modes at 30. Each refused, each exited 1, and **not one packet
+      directory was written** in any of them — report and undecoded-crop dump only. The
+      median-length heuristic reported both halves of `missed` against a thirty-student
+      median: the over-long packet as a warning, the student with no code as the error.
+      **A missed code costs six times the wall clock** (30 s becomes 176 s at thirty
+      students, because the full-page re-scan runs over everything), which extrapolates to
+      about fifteen silent minutes at 150 and is a phase 4 message problem.
 - [ ] One real duplex run with a full class — **after grading the paper**, per §13. Duplex,
       long edge, 100%, no margins, headers and footers off.
 - [ ] Record decode rate from the crop, how many needed the full-page pass, feeder jams, and
       wall-clock from stack to packets — into the run archive and a dated field-test note.
+
+Two tools had to exist before any of it could run, and both are worth keeping:
+`make-class.mjs` builds a synthetic class of any size with no randomness at all, and
+`print-sheets.mjs` prints through the browser's own `Page.printToPDF` at the documented
+settings. **Every `sheets.pdf` in this project until now had been made by a person pressing
+Ctrl+P**, which is unrepeatable and does not scale — and it is also why phase 1's last owed
+item was still open. It is now closed except for paper: 255 fronts printed through the real
+print path, **no decode failures**, symbol at 20.0mm so nothing scaled the page.
 
 **Done when:** one real thirty-student class has gone stack → packets end to end, and the
 decode rate and wall-clock are numbers rather than impressions.
