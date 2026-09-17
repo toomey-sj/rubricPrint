@@ -53,6 +53,19 @@ export function buildPackets(pageResults, roster, options = {}) {
      printed on things that already exist. */
   const byStudentId = new Map(roster.students.map((s) => [s.id, s]));
 
+  /* A page that fails to identify itself is glued onto whichever packet is open
+     (§3's boundary rule — nothing else is inferred) but that packet's own
+     boundary is now unproven: the next code might have been on THIS page, mis-
+     read, and the page actually belongs to whoever comes next. `unresolved_page`
+     is what tells split.mjs to quarantine the whole packet rather than file it
+     as if the glue were as trustworthy as a clean read (decisions.md §28). A page
+     with nowhere to glue to already goes to `leading`, which quarantines
+     unconditionally — it needs no flag of its own. */
+  const glueUnresolved = (page) => {
+    if (current) { current.pages.push(page.n); current.flags.push('unresolved_page'); }
+    else leading.push(page.n);
+  };
+
   for (const page of pageResults) {
     if (!page.payload) {
       if (current) current.pages.push(page.n);
@@ -65,7 +78,7 @@ export function buildPackets(pageResults, roster, options = {}) {
       issues.push({ kind: 'unreadable_payload', severity: 'error', page: page.n,
         message: `Page ${page.n} carries a code that is not folderId|runId|studentId ` +
           `(${parsed.reason}). It was left with the previous packet.` });
-      if (current) current.pages.push(page.n); else leading.push(page.n);
+      glueUnresolved(page);
       continue;
     }
 
@@ -74,7 +87,7 @@ export function buildPackets(pageResults, roster, options = {}) {
         runId: parsed.runId,
         message: `Page ${page.n} belongs to run ${parsed.runId}, not ${expectedRun}. ` +
           `That is a sheet from another assignment in this stack.` });
-      if (current) current.pages.push(page.n); else leading.push(page.n);
+      glueUnresolved(page);
       continue;
     }
 
@@ -90,7 +103,7 @@ export function buildPackets(pageResults, roster, options = {}) {
         message: `Page ${page.n} names student ID ${parsed.studentId}, which is not ` +
           `on this roster. Most often this is a sheet from another section that ` +
           `got into the stack.` });
-      if (current) current.pages.push(page.n); else leading.push(page.n);
+      glueUnresolved(page);
       continue;
     }
 
@@ -160,7 +173,10 @@ export function buildPackets(pageResults, roster, options = {}) {
   for (const [studentId, n] of counts) {
     if (n < 2) continue;
     const involved = packets.filter((p) => p.studentId === studentId);
-    involved.forEach((p, i) => { p.part = i + 1; p.partsTotal = n; });
+    /* Both parts quarantine (decisions.md §28): we know whose pages these are,
+       but not which run is the real submission, and picking one automatically
+       is exactly the invisible judgment call this project refuses to make. */
+    involved.forEach((p, i) => { p.part = i + 1; p.partsTotal = n; p.flags.push('duplicate_code'); });
     issues.push({ kind: 'duplicate_code', severity: 'error', studentId,
       student: name(involved[0].student),
       pages: involved.map((p) => p.startPage),
@@ -216,6 +232,18 @@ export function buildPackets(pageResults, roster, options = {}) {
   };
 }
 
+/* ── Which flags mean "do not file this" ─────────────────────────────────────
+   decisions.md §28's table, in code. `odd_page_count` and `folder_changed` are
+   deliberately absent — an off-by-one page count is a different kind of doubt
+   than "which student" or "which run", and a stale folder ID is the studentId
+   join (§15) working as designed, not a sign of anything wrong. Quarantining
+   either would bury real misattributions in noise. */
+export const QUARANTINE_FLAGS = new Set(['unresolved_page', 'duplicate_code', 'suspicious_length']);
+
+export function isQuarantined(packet) {
+  return packet.flags.some((f) => QUARANTINE_FLAGS.has(f));
+}
+
 export function name(student) {
   return `${student.last}, ${student.first}`;
 }
@@ -248,10 +276,16 @@ export function dirFor(packet) {
   return slug(`${packet.student.last}-${packet.student.first}-${packet.studentId}`);
 }
 
+/* `part` survives the move: a duplicate is still two files, still numbered,
+   still never merged. Exported so split.mjs's unresolved/ bundles can carry
+   the same suffix on a quarantined duplicate, instead of a second copy of
+   this logic drifting from this one. */
+export function partSuffix(packet) {
+  return packet.part ? `__part${packet.part}` : '';
+}
+
 export function fileFor(packet) {
   /* runId is free text typed into the app, so it gets the same strip a name
-     does. `part` survives the move: a duplicate is still two files, still
-     numbered, still never merged. */
-  const part = packet.part ? `__part${packet.part}` : '';
-  return `${slug(packet.runId)}${part}.pdf`;
+     does. */
+  return `${slug(packet.runId)}${partSuffix(packet)}.pdf`;
 }
