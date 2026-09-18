@@ -37,12 +37,6 @@ loop runs for a term on placeholder IDs, filed by hand.
 | My Drive or a shared drive | phase 6 | Shared drives change ownership — files belong to the drive, better for continuity when a teacher leaves. Decide before the root folder is created. |
 | Whether filing agrees with splitting's new answer | phase 6 | §28 answered this for splitting — a loud, per-packet skip beats all-or-nothing. Phase 6 reads that section before deciding whether filing follows it or deliberately diverges. |
 
-**Queued, decided but not built:** a missing student currently stops the whole split — nothing
-is written, and recovery means reading a page crop, typing a command by hand, and waiting for
-a full re-run. §28 changes this: clean packets always file, anything an issue attaches to goes
-to a page-numbered `unresolved/` bundle instead, and a teacher can resolve one by hand without
-touching the app at all. Reasoning: [decisions.md §28](decisions.md). Not yet implemented.
-
 ## Settled
 
 - **18 Sep 2026 — the class bar is live at any class count, and is where a class gets added.**
@@ -51,6 +45,13 @@ touching the app at all. Reasoning: [decisions.md §28](decisions.md). Not yet i
   where a teacher with one saved class saw the bar vanish on reload. The dashed `+` slot the
   mockups always drew (`.cls-tab-add`) replaces the button that used to sit at the bottom of
   the class panel. Reasoning: [decisions.md §29](decisions.md).
+- **16 Sep 2026 — a missing student quarantines a packet; it no longer stops the run.** A
+  missing student used to stop the whole split — nothing written, and recovery meant reading a
+  page crop, typing a command by hand, and waiting for a full re-run. Now clean packets always
+  file, and anything an issue attaches to goes to a page-numbered `unresolved/` bundle instead —
+  a teacher can open and file one by hand with no re-run required. Exit 1 now means "N filed, M
+  unresolved," never "wrote nothing." Reasoning and the per-issue-kind table: [decisions.md
+  §28](decisions.md).
 - **14 Sep 2026 — grade the paper, then scan it.** Collect → grade → scan → split → file, so
   the filed PDF carries the marked rubric. Reasoning and consequences in
   [decisions.md §13](decisions.md).

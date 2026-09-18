@@ -2,7 +2,7 @@
    arrays. No PDF, no rendering, no scanner — milliseconds.
 
    Run:  node packets-test.mjs --roster ../data/roster-sample.json */
-import { buildPackets } from './lib/packets.mjs';
+import { buildPackets, isQuarantined } from './lib/packets.mjs';
 import { parseArgs } from './lib/cli.mjs';
 import { loadRoster } from './lib/roster.mjs';
 
@@ -82,7 +82,12 @@ console.log(`\nPacket logic\n${'-'.repeat(64)}`);
     `${S[1].last}, ${S[1].first}`, 'by name, not by ID');
   check(has(r.issues, 'suspicious_length'),
     'and the packet that swallowed them is flagged as over-long');
-  check(!r.ok, 'the run fails rather than filing a wrong packet');
+  /* ok's meaning is unchanged — an error was found — but decisions.md §28 is what
+     split.mjs does about it now: quarantine the over-long packet to unresolved/
+     and still file everyone else, rather than refusing the whole run. */
+  check(!r.ok, 'ok stays false — an error was found');
+  check(isQuarantined(r.packets.find((p) => p.pages.length > 6)),
+    'and the packet that swallowed them is quarantined, not filed');
 }
 
 /* ── A duplicate code ────────────────────────────────────────────────────────── */
@@ -102,6 +107,8 @@ console.log(`\nPacket logic\n${'-'.repeat(64)}`);
   check(parts.every((p) => p.part), 'written as numbered parts, not merged');
   check(parts.every((p) => p.folderId === S[0].folderId),
     'both filed to the folder the roster holds now');
+  check(parts.every(isQuarantined),
+    'both parts are quarantined — we know whose they are, not which is real');
 }
 
 /* ── A term printed before the folders existed ───────────────────────────────── */
@@ -130,6 +137,8 @@ console.log(`\nPacket logic\n${'-'.repeat(64)}`);
     'filed to the folder the roster holds now');
   check(r.packets[0].printedFolderId === 'placeholder-' + S[0].id,
     'with what the paper actually said kept for the record');
+  check(r.packets.every((p) => !isQuarantined(p)),
+    'and none of it is quarantined — the deferral working, not a fault (decisions.md §28)');
 }
 
 /* ── Two students, one ID ────────────────────────────────────────────────────── */
@@ -154,6 +163,11 @@ console.log(`\nPacket logic\n${'-'.repeat(64)}`);
   check(has(r.issues, 'wrong_run'), 'last term’s sheet is spotted');
   check(r.issues.find((i) => i.kind === 'wrong_run').runId === 'SRE1-2026-05-02',
     'and the run it actually belongs to is reported');
+  /* Page 7 glues onto the first student's still-open packet (§3's boundary rule),
+     but that packet's own end is now unproven — the real code that should have
+     started here was misread as belonging to last term. */
+  check(isQuarantined(r.packets[0]),
+    'the packet the stray page glued onto is quarantined, not filed as if clean');
 }
 
 /* ── Odd page count — duplex parity ──────────────────────────────────────────── */
@@ -162,6 +176,8 @@ console.log(`\nPacket logic\n${'-'.repeat(64)}`);
   const r = buildPackets(pages, roster, { runId: RUN });
   check(has(r.issues, 'odd_page_count'), 'an odd packet is flagged',
     'a duplex sheet is always two pages, so odd means one went missing');
+  check(!isQuarantined(r.packets[r.packets.length - 1]),
+    'but stays filed — an off-by-one is a different kind of doubt (decisions.md §28)');
 }
 
 /* ── A student ID that is not on the roster ──────────────────────────────────── */
@@ -178,12 +194,57 @@ console.log(`\nPacket logic\n${'-'.repeat(64)}`);
     'and its pages become leading pages rather than being attributed');
 }
 
+/* ── An off-roster ID mid-scan, where there is a packet to glue onto ────────── */
+{
+  const pages = healthyScan();
+  pages[6] = code(7, S[1], { studentId: '9999' });
+  const r = buildPackets(pages, roster, { runId: RUN });
+  check(has(r.issues, 'unknown_student'), 'still reported');
+  check(isQuarantined(r.packets[0]),
+    'and this time it glues onto the open packet, which quarantines');
+}
+
 /* ── A malformed payload ─────────────────────────────────────────────────────── */
 {
   const pages = healthyScan();
   pages[0] = { n: 1, payload: 'just-some-text' };
   const r = buildPackets(pages, roster, { runId: RUN });
   check(has(r.issues, 'unreadable_payload'), 'a payload with the wrong shape is reported');
+}
+
+/* ── A malformed payload mid-scan, where there is a packet to glue onto ─────── */
+{
+  const pages = healthyScan();
+  pages[6] = { n: 7, payload: 'just-some-text' };
+  const r = buildPackets(pages, roster, { runId: RUN });
+  check(has(r.issues, 'unreadable_payload'), 'still reported');
+  check(isQuarantined(r.packets[0]),
+    'and this time it glues onto the open packet, which quarantines');
+}
+
+/* ── A mixed scan — the shape split.mjs actually partitions ──────────────────── */
+{
+  /* Leading pages, four clean packets, and a fifth student who fed twice —
+     everything §28 needs to sort into two piles at once. */
+  const pages = [blank(1), blank(2), ...healthyScan().map((p) => ({ ...p, n: p.n + 2 }))];
+  const n = pages.length;
+  pages.push(code(n + 1, S[2], { folderId: 'placeholder-' + S[2].id }), blank(n + 2));
+  const r = buildPackets(pages, roster, { runId: RUN });
+
+  const filed = r.packets.filter((p) => !isQuarantined(p));
+  const quarantined = r.packets.filter((p) => isQuarantined(p));
+  check(filed.length === S.length - 1, 'the four untouched students stay filed',
+    `got ${filed.length}`);
+  check(quarantined.length === 2, 'both parts of the fed-twice student quarantine',
+    `got ${quarantined.length}`);
+  check(quarantined.every((p) => p.studentId === S[2].id),
+    'and only that student is in the quarantined pile');
+
+  const pagesFiled = filed.reduce((sum, p) => sum + p.pages.length, 0);
+  const pagesUnresolved = quarantined.reduce((sum, p) => sum + p.pages.length, 0) + r.leading.length;
+  check(pagesFiled + pagesUnresolved === pages.length,
+    'every page lands in exactly one pile — filed, quarantined, or leading',
+    `${pagesFiled} + ${pagesUnresolved} vs ${pages.length}`);
 }
 
 /* ── An empty stack ──────────────────────────────────────────────────────────── */

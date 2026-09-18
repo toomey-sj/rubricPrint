@@ -8,14 +8,27 @@
                                              --run SRE1-2026-09-18
                                              [--out ../data/out/packets]
                                              [--deep]       always full-page scan
-                                             [--force-code 13=<studentId>] */
+                                             [--force-code 13=<studentId>]
+
+   Exit codes, and this is the thing that changed (decisions.md §28): every
+   packet with a clean boundary files under packets/ every run, even when
+   another student on the roster is missing. 0 means every page landed in a
+   named student's folder. 1 means some pages did not — they are sitting in
+   unresolved/ as page-range PDFs a person can open and file by hand, no
+   re-run required — and the report says how many packets filed against how
+   many did not. It is NOT "nothing was written"; in the one case where every
+   packet turns out to need quarantining, "N filed" is honestly 0, but
+   unresolved/ still holds something. Anything that used to treat exit 1 as
+   "the splitter wrote nothing" needs a different check now — read
+   summary.packetsUnresolved. 2 is unchanged: the command was wrong. */
 import { writeFile, mkdir, readFile, copyFile } from 'node:fs/promises';
 import { createHash } from 'node:crypto';
 import { fileURLToPath } from 'node:url';
 import { dirname, join, resolve, basename } from 'node:path';
 import { PDFDocument } from 'pdf-lib';
 import { openPdf, renderPage, readCode, CROP, DPI } from './lib/pdf.mjs';
-import { buildPackets, name, dirFor, fileFor } from './lib/packets.mjs';
+import { buildPackets, name, dirFor, fileFor, partSuffix, isQuarantined, QUARANTINE_FLAGS }
+  from './lib/packets.mjs';
 import { parseArgs, fail } from './lib/cli.mjs';
 import { loadRoster } from './lib/roster.mjs';
 
@@ -136,53 +149,24 @@ if (result.issues.length) {
 
 console.log(lines.join('\n'));
 
-/* ── Write, or refuse to ─────────────────────────────────────────────────────
-   Nothing is written when a student is missing. A half-correct split that the
-   teacher files is worse than no split, because the mis-filing is invisible. */
+/* ── Partition: what's sure enough to file, what needs a person ──────────────
+   decisions.md §28. A clean packet files exactly as it always has. A packet
+   an issue attached to — a page glued on with an unresolved read, a duplicate
+   code, a run of pages that looks like it swallowed its neighbour — is no
+   longer trusted to name where its own boundary is, so it goes to
+   unresolved/ as a full page-range PDF instead of packets/. Leading pages
+   never had a packet to belong to and quarantine the same way, unattributed.
+   Both piles are always written; nothing is silently discarded and nothing
+   is silently filed. */
+const filed = result.packets.filter((p) => !isQuarantined(p));
+const quarantined = result.packets.filter((p) => isQuarantined(p));
+const leadingPages = result.leading;
+
 await mkdir(outDir, { recursive: true });
-
-if (!result.ok) {
-  /* `undecoded/` sits as a sibling of the student directories, which looks like a
-     namespace collision waiting to happen. It is not: this branch exits before a
-     single packet is written, so the two can never share the directory. */
-
-  /* The way out of a dead end. The sheet prints its run ID in readable type right
-     under the code, so dumping the crop of every page that failed lets the teacher
-     read it with their eyes and hand it back with --force-code. Without this, an
-     undecodable code means re-scanning the whole stack. */
-  const stuck = pages.filter((p) => !p.payload && isLikelySheet(p.n));
-  if (stuck.length) {
-    const dumpDir = join(outDir, 'undecoded');
-    await mkdir(dumpDir, { recursive: true });
-    for (const page of stuck) {
-      const cropped = await renderPage(doc, page.n, { dpi: DPI, crop: CROP });
-      await writeFile(join(dumpDir, `page-${String(page.n).padStart(3, '0')}.png`),
-        cropped.canvas.toBuffer('image/png'));
-    }
-    console.log('');
-    console.log(`Wrote ${stuck.length} crop(s) to ${join(outDir, 'undecoded')} — ` +
-      `page${stuck.length === 1 ? '' : 's'} ${stuck.map((p) => p.n).join(', ')}.`);
-    console.log('One of them is a sheet whose code would not read. Open them, find the');
-    console.log('one with a routing square, read the name off it, and re-run naming');
-    console.log('that page and that student:');
-    /* The paths exactly as they were typed, not basenames: this line is meant to
-       be copied straight back into the terminal, and a basename would not
-       resolve from wherever the teacher actually is. */
-    console.log(`  node split.mjs ${args.positionals[0] || scanPath} ` +
-      `--roster ${args.get('roster')} --run ${expectedRun} ` +
-      `--force-code <page>=<student id>`);
-    console.log(`  IDs on this roster: ${roster.students.map((s) => s.id).join(', ')}`);
-  }
-
-  console.log(`\n${'-'.repeat(64)}`);
-  console.log(`Nothing was written to ${outDir}. Fix the above and run again.\n`);
-  await writeReport();
-  process.exit(1);
-}
-
 const source = await PDFDocument.load(new Uint8Array(await readFile(scanPath)),
   { ignoreEncryption: true });
-for (const packet of result.packets) {
+
+for (const packet of filed) {
   const out = await PDFDocument.create();
   const copied = await out.copyPages(source, packet.pages.map((n) => n - 1));
   copied.forEach((page) => out.addPage(page));
@@ -199,10 +183,101 @@ for (const packet of result.packets) {
   await writeFile(join(studentDir, packet.file), await out.save());
 }
 
-await writeReport();
+/* pages-NNN-NNN.pdf, zero-padded to match page-NNN.png's existing convention
+   below, so a teacher who has seen one already reads the other. */
+const pad = (n) => String(n).padStart(3, '0');
+const unresolvedDir = join(outDir, 'unresolved');
+const unresolved = [];
+
+async function writeUnresolved(pageNums, filename, extra) {
+  const out = await PDFDocument.create();
+  const copied = await out.copyPages(source, pageNums.map((n) => n - 1));
+  copied.forEach((page) => out.addPage(page));
+  await mkdir(unresolvedDir, { recursive: true });
+  await writeFile(join(unresolvedDir, filename), await out.save());
+  unresolved.push({ pages: pageNums, file: `unresolved/${filename}`, ...extra });
+}
+
+if (leadingPages.length) {
+  const message = result.issues.find((i) => i.kind === 'leading_pages')?.message || null;
+  await writeUnresolved(leadingPages,
+    `pages-${pad(leadingPages[0])}-${pad(leadingPages[leadingPages.length - 1])}.pdf`,
+    { studentId: null, student: null, reason: ['leading_pages'], message });
+}
+
+for (const packet of quarantined) {
+  const first = packet.pages[0];
+  const last = packet.pages[packet.pages.length - 1];
+  const reason = [...new Set(packet.flags)].filter((f) => QUARANTINE_FLAGS.has(f));
+  /* Reuse the messages buildPackets already wrote — they're already good, and
+     they're what's on screen above. Matched by studentId (suspicious_length,
+     duplicate_code) or by a page landing inside this packet (unreadable_payload,
+     wrong_run, unknown_student, which are recorded per-page, not per-packet). */
+  const message = result.issues
+    .filter((i) => i.studentId === packet.studentId ||
+      (i.page !== undefined && packet.pages.includes(i.page)))
+    .map((i) => i.message)
+    .join(' ');
+  await writeUnresolved(packet.pages, `pages-${pad(first)}-${pad(last)}${partSuffix(packet)}.pdf`,
+    { studentId: packet.studentId, student: name(packet.student), reason, message });
+}
+
+/* The way out of a dead end for a page that would not decode at all. The sheet
+   prints its run ID in readable type right under the code, so dumping the crop
+   of every page that failed lets the teacher read it with their eyes and hand
+   it back with --force-code. May become redundant now that unresolved/ holds
+   the full page-range PDF a person can just open directly — that's a follow-up
+   simplification, not made here. */
+const stuck = pages.filter((p) => !p.payload && isLikelySheet(p.n));
+if (stuck.length) {
+  const dumpDir = join(outDir, 'undecoded');
+  await mkdir(dumpDir, { recursive: true });
+  for (const page of stuck) {
+    const cropped = await renderPage(doc, page.n, { dpi: DPI, crop: CROP });
+    await writeFile(join(dumpDir, `page-${pad(page.n)}.png`),
+      cropped.canvas.toBuffer('image/png'));
+  }
+  console.log('');
+  console.log(`Wrote ${stuck.length} crop(s) to ${join(outDir, 'undecoded')} — ` +
+    `page${stuck.length === 1 ? '' : 's'} ${stuck.map((p) => p.n).join(', ')}.`);
+  console.log('One of them is a sheet whose code would not read. Open them, find the');
+  console.log('one with a routing square, read the name off it, and re-run naming');
+  console.log('that page and that student:');
+  /* The paths exactly as they were typed, not basenames: this line is meant to
+     be copied straight back into the terminal, and a basename would not
+     resolve from wherever the teacher actually is. */
+  console.log(`  node split.mjs ${args.positionals[0] || scanPath} ` +
+    `--roster ${args.get('roster')} --run ${expectedRun} ` +
+    `--force-code <page>=<student id>`);
+  console.log(`  IDs on this roster: ${roster.students.map((s) => s.id).join(', ')}`);
+}
+
+const pagesFiled = filed.reduce((n, p) => n + p.pages.length, 0);
+const pagesUnresolved = quarantined.reduce((n, p) => n + p.pages.length, 0) + leadingPages.length;
+
+/* The whole point of §28: every page is accounted for, in exactly one pile.
+   A mismatch here is a bug in this partition, not a paper problem, so it is
+   thrown rather than merely noted in the report. */
+if (pagesFiled + pagesUnresolved !== doc.numPages) {
+  throw new Error(`${pagesFiled} filed + ${pagesUnresolved} unresolved ` +
+    `!= ${doc.numPages} pages scanned. This is a bug in split.mjs, not a paper problem.`);
+}
+
 console.log(`\n${'-'.repeat(64)}`);
-console.log(`${result.packets.length} packets written to ${outDir}\n`);
-process.exit(0);
+console.log(`${filed.length} packet${filed.length === 1 ? '' : 's'} (${pagesFiled} pages) ` +
+  `filed to ${outDir}.`);
+if (unresolved.length) {
+  console.log(`${unresolved.length} bundle${unresolved.length === 1 ? '' : 's'} ` +
+    `(${pagesUnresolved} pages) need a person and ${unresolved.length === 1 ? 'was' : 'were'} ` +
+    `written to ${unresolvedDir}.`);
+  console.log('Open a bundle there, recognise the work, and move it into the right student');
+  console.log('folder by hand — no re-run required.\n');
+} else {
+  console.log('Nothing needed a person this run.\n');
+}
+
+await writeReport();
+process.exit(unresolved.length ? 1 : 0);
 
 /* A page worth dumping is one that sits where a sheet front should — right after an
    even-length run, or at the head of the stack. Dumping every blank back would bury
@@ -223,8 +298,13 @@ async function writeReport() {
     /* 2: `folderId` on a packet is the roster's CURRENT folder, not the one
        printed on the sheet — that is `printedFolderId` now. A v1 reader taking
        `folderId` at face value would file into a placeholder. Packets also moved
-       from one flat directory to `dir`/`file`. */
-    schemaVersion: 2,
+       from one flat directory to `dir`/`file`.
+       3: a missing student no longer empties the run (decisions.md §28). A v2
+       reader trusting `packets` to mean "what got filed" now includes packets
+       that landed in `unresolved/` instead — check `dir`/`file` for null, or
+       read the new top-level `unresolved` array, which is exactly the ones
+       that did not. */
+    schemaVersion: 3,
     startedAt,
     /* The hash is what makes a re-split honest: it says which bytes this report
        describes. The scan itself is deliberately not copied here — a duplex
@@ -244,7 +324,12 @@ async function writeReport() {
       dir: p.dir || null, file: p.file || null, flags: p.flags
     })),
     issues: result.issues,
-    summary: { ...result.summary, ok: result.ok }
+    /* One entry per quarantined packet or leading group — not per page — so a
+       teacher scans a handful of bundles rather than a page list. */
+    unresolved,
+    summary: { ...result.summary, ok: result.ok,
+      packetsFiled: filed.length, packetsUnresolved: quarantined.length,
+      pagesFiled, pagesUnresolved }
   };
   const json = JSON.stringify(report, null, 2);
 

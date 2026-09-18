@@ -53,9 +53,11 @@ must truncate rather than push the code out of its rectangle.
 
 - **The app proposes, a person confirms.** True of columns, packet boundaries, folder
   matches alike. Nothing structural happens invisibly.
-- **Nothing is written when a student is missing.** A half-correct split that gets filed is
-  worse than no split, because the mis-filing is invisible. The splitter exits non-zero and
-  writes only the report.
+- **Nothing is written silently.** A half-correct split that gets filed as if it were clean is
+  worse than no split, because the mis-filing is invisible. So a packet whose boundary isn't
+  trustworthy is separated and named — a page-ranged bundle in `unresolved/` — rather than
+  filed or discarded; a missing student no longer stops the packets that are clean. Reasoning
+  and the exact per-issue rule: `docs/decisions.md` §28.
 - **Blank backs are kept and filed.** A blank side is evidence that the scanner caught the
   page. The count filed always reconciles with the count scanned.
 - **The app has no opinion about rubric shape.** The real rubric is a holistic scale, not a
