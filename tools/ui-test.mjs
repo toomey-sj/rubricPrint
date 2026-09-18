@@ -503,22 +503,27 @@ section('A moved student prints on the right sheet');
    §19 built the strip for a loaded Planbook document and its guard outlived the
    premise: saved classes became the usual several-class case and were the one
    case with no way to switch between them. Both sources drive it now, and never
-   both at once. */
+   both at once.
+
+   §29 amends §19 again: the bar is drawn at ANY class count now, because it is
+   also where a class gets added — a dashed `+` slot, live even at zero. */
 section('Switching classes from the bar');
 {
   const bar = () => page.eval("document.getElementById('classBar').innerText");
 
   await plant(null);
-  check(await bar() === '', 'nothing stored, nothing in the bar');
+  check(await bar() === '+ Add a class', 'nothing stored, just the add slot');
 
   const oneClass = YEAR();
   oneClass.classes = [oneClass.classes[0]];
   await plant(oneClass);
-  check(await bar() === '', 'one class is not a bar',
-    '§19’s own words: a strip with one tab on it is furniture');
+  let shown = await bar();
+  check(/Period 1/.test(shown) && /\+/.test(shown),
+    'one class is a real tab plus the add slot now',
+    '§29 amends §19’s "a strip with one tab on it is furniture" — the slot is what makes it not furniture');
 
   await plant(YEAR());
-  let shown = await bar();
+  shown = await bar();
   check(/Period 1/.test(shown) && /Period 3/.test(shown),
     'two classes are, and it is there before anything is pressed');
   check(/the prompt carries across/.test(shown), 'saying what switching keeps');
@@ -568,6 +573,55 @@ section('Switching classes from the bar');
     'printing from one of its classes hands the strip to the backup');
   check(!/Period 1\b.*Period 3\b/.test(await bar()) || /English 10/.test(await bar()),
     'showing the backup’s classes, not the saved ones');
+}
+
+/* ══ Adding a class from the bar ═════════════════════════════════════════════
+   §29: the button that used to sit at the bottom of the class panel moved into
+   the bar itself, as the dashed slot the mockups always drew and this build
+   never wired up. */
+section('Adding a class from the bar');
+{
+  const bar = () => page.eval("document.getElementById('classBar').innerText");
+  const addName = (value) => page.eval(`(function(){
+    var input = document.getElementById('clsTabAddInput');
+    input.value = ${JSON.stringify(value)};
+    document.getElementById('clsTabAddForm').requestSubmit();
+  })()`);
+
+  await plant(null);
+  check(await bar() === '+ Add a class', 'starts as the button, nobody has a class yet');
+  await click('#clsTabAddBtn');
+  check(await page.eval("document.getElementById('clsTabAddInput') !== null"),
+    'clicking it swaps in a name field, in place, rather than opening a dialog');
+
+  await addName('');
+  await settle();
+  check(await bar() === '+ Add a class', 'submitting empty collapses back to the button',
+    'and creates nothing');
+  check(await stored() === null, 'so there is still no year document at all');
+
+  await click('#clsTabAddBtn');
+  await addName('Period 1 — English 10');
+  await settle();
+  const shown = await bar();
+  check(/Period 1 — English 10/.test(shown), 'a real name becomes a real tab');
+  check(/\+/.test(shown), 'and the add slot is still there for the next one');
+  const doc = await stored();
+  check(doc && doc.classes.length === 1 && doc.classes[0].name === 'Period 1 — English 10',
+    'written through the same path a saved class always used',
+    'createClass still calls ensureDoc/addClass/writeDoc, just from the bar now');
+  check(/Import roster/.test(await panel()),
+    'and lands straight in picking its roster — a class with nobody in it is half-done');
+
+  /* Escape is the explicit cancel; losing focus mid-type is not one, so a stray
+     click elsewhere while typing a name does not throw it away silently. */
+  await click('#clsTabAddBtn');
+  await page.eval("document.getElementById('clsTabAddInput').value = 'Not yet submitted'");
+  await page.eval(
+    "document.getElementById('clsTabAddInput').dispatchEvent(" +
+    "new KeyboardEvent('keydown', { key: 'Escape' }))");
+  check((await bar()).indexOf('Not yet submitted') === -1,
+    'Escape cancels an in-progress name without creating it');
 }
 
 /* The row shows only a folder's last six characters. For a student with no

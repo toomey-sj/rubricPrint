@@ -45,6 +45,12 @@ touching the app at all. Reasoning: [decisions.md §28](decisions.md). Not yet i
 
 ## Settled
 
+- **18 Sep 2026 — the class bar is live at any class count, and is where a class gets added.**
+  §19's "a strip with one tab on it is furniture" stopped holding once the bar became the
+  only place to add a class, not only switch between them — found from the first real deploy,
+  where a teacher with one saved class saw the bar vanish on reload. The dashed `+` slot the
+  mockups always drew (`.cls-tab-add`) replaces the button that used to sit at the bottom of
+  the class panel. Reasoning: [decisions.md §29](decisions.md).
 - **14 Sep 2026 — grade the paper, then scan it.** Collect → grade → scan → split → file, so
   the filed PDF carries the marked rubric. Reasoning and consequences in
   [decisions.md §13](decisions.md).

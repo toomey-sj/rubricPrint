@@ -13,7 +13,7 @@
      rather than a flag per destination, because two flags can disagree, and this
      one decides whether a file is written into a class or only printed from. */
   var state = { roster: null, planbook: null, classId: null, doc: null,
-                pick: null, front: '', back: '' };
+                pick: null, front: '', back: '', addingClass: false };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -441,13 +441,11 @@
             '<span class="class-head-title">Your classes</span>' +
           '</div>' +
           '<div class="class-row"><div class="class-row-main">' +
-            '<div class="class-row-sub">No classes yet. Make one and its roster is kept ' +
-            'on this computer, so printing later needs no file at all.</div>' +
+            '<div class="class-row-sub">No classes yet. Add one from the bar above, and ' +
+            'its roster is kept on this computer, so printing later needs no file at all.</div>' +
           '</div></div>' +
           backupRow() +
-          newClassForm() +
         '</div>';
-      wireNewClassForm();
       wireBackupRow(box);
       return;
     }
@@ -491,10 +489,8 @@
         rows +
         installRow() +
         backupRow() +
-        newClassForm() +
       '</div>';
 
-    wireNewClassForm();
     wireBackupRow(box);
     wireInstallRow(box);
     bind(box, 'data-open-class', function (id) { openSavedClass(id); });
@@ -651,28 +647,20 @@
     refreshPanelIfIdle();
   });
 
-  function newClassForm() {
-    return '<form class="new-class-form" id="newClassForm">' +
-      '<input class="new-class-input" id="newClassName" type="text" ' +
-        'placeholder="Period 1 — English 10" aria-label="New class name" autocomplete="off">' +
-      '<button class="class-action-btn primary" type="submit">Add a class</button>' +
-    '</form>';
-  }
-
-  function wireNewClassForm() {
-    $('newClassForm').addEventListener('submit', function (e) {
-      e.preventDefault();
-      var name = $('newClassName').value.trim();
-      if (!name) return;
-      var doc = ensureDoc();
-      var klass = Y.addClass(doc, name);
-      writeDoc(doc);
-      renderClassPanel();
-      renderClassBar();
-      /* Straight into picking a roster: a class with nobody in it is a half-done
-         action, and the next thing anyone wants is the list of names. */
-      pickRosterFor(klass.id);
-    });
+  /* Used to be a form at the bottom of the class panel; moved into the class
+     bar itself (decisions.md §29), which is also why it is a plain function
+     rather than a submit handler — the bar's inline input calls it directly. */
+  function createClass(name) {
+    name = (name || '').trim();
+    if (!name) return;
+    var doc = ensureDoc();
+    var klass = Y.addClass(doc, name);
+    writeDoc(doc);
+    renderClassPanel();
+    renderClassBar();
+    /* Straight into picking a roster: a class with nobody in it is a half-done
+       action, and the next thing anyone wants is the list of names. */
+    pickRosterFor(klass.id);
   }
 
   function bind(box, attr, fn) {
@@ -1419,8 +1407,7 @@
   /* ── The class bar ─────────────────────────────────────────────────────────
      Drawn on four mockup boards and never built, which is how it came to
      contradict the notes pinned beside it. It is buildable now because a Planbook
-     year document carries several classes — a CSV is exactly one, and a strip with
-     one tab on it is furniture.
+     year document carries several classes — a CSV is exactly one.
 
      It is also multi-class printing, which decisions.md listed as decided and not
      built: the assignment is scoped ABOVE the class, so switching tabs keeps the
@@ -1437,6 +1424,13 @@
      A loaded backup still wins the strip while it is on screen, because that is
      the document being looked at. Once it is put away (§27) the saved classes
      are the only source, which is the state most printing happens in. */
+  /* ALWAYS DRAWN NOW, at any class count — decisions.md §29 amends §19's "a strip
+     with one tab on it is furniture." That was true of a strip that only ever
+     switched between classes; it stopped being true once the bar became the one
+     place a class gets ADDED too, via the dashed slot the mockups always drew
+     here (mockups/parts/book.css `.cls-tab-add`) and this build never wired up.
+     Zero classes is `+ Add a class` on its own; one or more is real tabs plus a
+     short `+`, matching Planbook's own strip. */
   function renderClassBar() {
     var bar = $('classBar');
     var tabs;
@@ -1456,9 +1450,14 @@
       tabs = [];
     }
 
-    /* §19's own words, and they hold for either source: a strip with one tab on
-       it is furniture. The panel is where a single class gets opened. */
-    if (tabs.length < 2) { bar.innerHTML = ''; return; }
+    var addSlot = state.addingClass
+      ? '<form class="cls-tab-add-form" id="clsTabAddForm">' +
+          '<input class="cls-tab-add-input" id="clsTabAddInput" type="text" ' +
+            'placeholder="Period 1 — English 10" aria-label="New class name" autocomplete="off">' +
+        '</form>'
+      : '<button class="cls-tab cls-tab-add" id="clsTabAddBtn" type="button">' +
+          (tabs.length ? '+' : '+ Add a class') +
+        '</button>';
 
     bar.innerHTML = tabs.map(function (c) {
       var active = c.id === state.classId;
@@ -1468,7 +1467,8 @@
         escapeText(c.name) +
         '<span class="cls-tab-count">' + c.count + '</span>' +
       '</button>';
-    }).join('') + '<span class="cls-tab-note">' + escapeText(note) + '</span>';
+    }).join('') + addSlot +
+      (note ? '<span class="cls-tab-note">' + escapeText(note) + '</span>' : '');
 
     var nodes = bar.querySelectorAll('[data-tab]');
     for (var i = 0; i < nodes.length; i++) {
@@ -1476,6 +1476,32 @@
         var id = e.currentTarget.getAttribute('data-tab');
         if (state.planbook) openPlanbookClass(id);
         else openSavedClass(id);
+      });
+    }
+
+    if (state.addingClass) {
+      var input = $('clsTabAddInput');
+      input.focus();
+      $('clsTabAddForm').addEventListener('submit', function (e) {
+        e.preventDefault();
+        var name = input.value.trim();
+        state.addingClass = false;
+        if (name) createClass(name);
+        else renderClassBar();
+      });
+      /* Losing focus with nothing typed collapses the slot back to the button.
+         A blur mid-type is not a cancel — Escape is the explicit one — so a stray
+         click elsewhere while typing a name does not throw the name away. */
+      input.addEventListener('blur', function () {
+        if (!input.value.trim()) { state.addingClass = false; renderClassBar(); }
+      });
+      input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') { state.addingClass = false; renderClassBar(); }
+      });
+    } else {
+      $('clsTabAddBtn').addEventListener('click', function () {
+        state.addingClass = true;
+        renderClassBar();
       });
     }
   }

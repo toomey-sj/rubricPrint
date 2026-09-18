@@ -82,6 +82,19 @@ a { color: #4a5fbb; }
 /* DARK-01 — a primary tab inverts to near-black. */
 .cls-tab.active { background: #1a1a2e; color: #fff; }
 .cls-tab-count { font-weight: 600; opacity: 0.6; margin-left: 6px; }
+/* The add slot the mockups always drew (mockups/parts/book.css) and this build
+   never wired up — dashed reads as a slot rather than a filled thing (DARK-02),
+   same reasoning the dropzone borrows below. */
+.cls-tab-add { background: transparent; border: 1.5px dashed rgba(255,255,255,0.3); color: rgba(255,255,255,0.6); }
+.cls-tab-add:hover { border-color: rgba(255,255,255,0.55); color: rgba(255,255,255,0.85); background: transparent; }
+.cls-tab-add-form { display: flex; flex-shrink: 0; }
+.cls-tab-add-input {
+  padding: 4px 10px; border-radius: 6px; border: 1.5px dashed rgba(255,255,255,0.4);
+  background: rgba(255,255,255,0.08); color: #fff; font-size: 13px; font-weight: 700;
+  font-family: inherit; width: 190px;
+}
+.cls-tab-add-input::placeholder { color: rgba(255,255,255,0.4); font-weight: 400; }
+.cls-tab-add-input:focus { outline: none; border-style: solid; border-color: rgba(255,255,255,0.6); }
 .cls-tab-note {
   font-size: 11px; color: rgba(255,255,255,0.45); margin-left: 4px;
   flex-shrink: 0; white-space: nowrap;
@@ -158,12 +171,6 @@ a { color: #4a5fbb; }
 }
 .class-head-title { font-size: 11px; font-weight: 700; letter-spacing: 0.6px;
   text-transform: uppercase; color: #6b7a8d; }
-.new-class-form { display: flex; gap: 8px; padding: 11px 14px; border-top: 1px solid #eef1f6; }
-.new-class-input {
-  flex: 1 1 auto; padding: 7px 10px; border: 1.5px solid #d0d8e4; border-radius: 8px;
-  font-size: 13px; font-family: inherit;
-}
-.new-class-input:focus { outline: none; border-color: #5b6fcc; }
 
 /* Amber is a standing condition, not an event that just happened. */
 .notice {

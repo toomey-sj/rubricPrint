@@ -808,6 +808,45 @@ now would be building ahead of a real case.
 
 ---
 
+## 29 · The class bar is live at any count, because it is also where a class gets added
+
+Decided 18 Sep 2026, the first real deploy's first bug report: on GitHub Pages, with one
+class saved, the bar was gone after a reload. Not a storage bug — the year document was
+intact and the class panel showed it correctly — the bar was doing exactly what §19 built it
+to do. **"A strip with one tab on it is furniture" stopped being the right call the moment
+the strip became the only place a class gets added, not only switched between.**
+
+The mockups always drew this. `mockups/parts/book.css`'s `.cls-tab-add` — a dashed slot,
+`+ Add a class` alone or a bare `+` after real tabs — is on four boards (`Main`,
+`PasteReview`, `PrintPreview`, `ColumnCheck`, `Setup`) and was never wired into `app.js`.
+The button that did the same job lived instead at the bottom of the class panel, as a form
+(`newClassForm`/`wireNewClassForm`), reachable only once the panel was scrolled to. Moving it
+into the bar is not new design — it is finishing what was already drawn, and it happens to
+also match Planbook's own strip, which carries the same slot for the same reason.
+
+**So `renderClassBar` drops the `tabs.length < 2` guard entirely** and always renders: real
+tabs (zero or more) plus the add slot, which is a dashed button that swaps in place for a
+plain text input on click — not a dialog, not a scroll to another part of the screen. Enter
+creates the class through the same `ensureDoc` → `Y.addClass` → `writeDoc` path the panel's
+form always used (renamed `createClass`, called directly rather than from a submit handler
+that no longer exists); Escape or a blur with nothing typed collapses it back to the button.
+Submitting empty is silently a no-op, matching the old form, which also did nothing on an
+empty name.
+
+**The panel's own copy of the button is gone, not duplicated.** Two places to add a class
+would raise the same question §19 already answered about two sources for one class bar: which
+one is real. The panel's empty-state message now points at the bar instead of repeating the
+control.
+
+**This does not touch anything about what a class IS** — `Y.addClass`, the year document
+schema, reconciliation, none of it changes. It is purely where the button lives and when the
+strip draws itself. `year-test.mjs` is untouched; `ui-test.mjs`'s two furniture-rule
+assertions became "shows the add slot" assertions, and a new section drives the add-a-class
+flow itself, which had no browser coverage before this — only `Y.addClass` at the library
+level.
+
+---
+
 ## Deliberately not built
 
 | | note |
