@@ -499,6 +499,54 @@ section('A moved student prints on the right sheet');
     'and the pre-flight passes on both sides');
 }
 
+/* ══ The back is optional (decisions.md §30) ═════════════════════════════════
+   A checkbox, not a per-student choice, and the sharpest edge is the print
+   dialog: with one page per student, leaving duplex on would weld student N's
+   cover onto the back of student N+1's. That instruction has to change with the
+   checkbox, since nothing else on screen can catch a wrong print-dialog
+   setting after the fact. */
+section('The back is optional');
+{
+  await plant(YEAR());
+  await click('[data-open-class="c_p1"]');
+  await settle();
+  await page.eval(`(function(){
+    var box = document.getElementById('pasteFront');
+    box.innerHTML = '<p>Assignment text</p>';
+    box.dispatchEvent(new Event('input', { bubbles: true }));
+  })()`);
+  await settle();
+
+  check(await page.eval("document.getElementById('fTwoSided').checked") === true,
+    'starts double-sided, the usual case');
+  check(await page.eval("document.querySelectorAll('.sheet').length") === 0,
+    'and builds nothing yet — the back is required until it is turned off',
+    'the front alone is not enough');
+
+  await click('#fTwoSided');
+  await settle();
+
+  const sides = () => page.eval(
+    "Array.prototype.map.call(document.querySelectorAll('.sheet'), " +
+    "function (s) { return s.dataset.side; })");
+  check((await sides()).length === 3, 'unticked, one page per student is enough to print',
+    (await sides()).length + ' pages for 3 students');
+  check((await sides()).every((s) => s === 'front'),
+    'and every one of them is a front — there is no back to build');
+  check(!/Stop|Waiting/.test(await page.eval("document.getElementById('preflight').innerText")),
+    'the pre-flight passes without a back pasted at all');
+  check(/single-sided/.test(await text('printDialogHint')),
+    'and the print-dialog card says single-sided',
+    'a duplex print here would weld two students onto one physical sheet');
+
+  await click('#fTwoSided');
+  await settle();
+  check(await page.eval("document.querySelectorAll('.sheet').length") === 0,
+    'ticking it back on needs the back again before anything builds');
+  check(/double-sided/.test(await text('printDialogHint')),
+    'and the card is back to double-sided');
+}
+
 /* ══ The class bar over saved classes ════════════════════════════════════════
    §19 built the strip for a loaded Planbook document and its guard outlived the
    premise: saved classes became the usual several-class case and were the one

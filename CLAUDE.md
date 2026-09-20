@@ -39,7 +39,7 @@ Changing any of these changes the other side too, and needs its reasoning record
 | Contract | Where it lives |
 |---|---|
 | Routing code at **left 674, top 48, 94 × 94** on an 816 × 1056 page | `app/app.js:8` `QR_BOX` ↔ `tools/lib/pdf.mjs` `CROP` |
-| **Exactly 2 pages per student** — `height` not `min-height`, `overflow: hidden`, so content clips loudly instead of reflowing and shearing the duplex run | `app/index.html` `.sheet` |
+| **2 pages per student, or 1 with the back off** — `height` not `min-height`, `overflow: hidden`, so content clips loudly instead of reflowing and shearing the duplex run. A run-wide choice (`state.twoSided`), never per student, because a mixed run would put duplex printing at odds with itself — see §30 | `app/index.html` `.sheet`, `app/app.js` `render()` |
 | **One code per sheet, front only.** A second code starts a phantom packet and cuts every student in half | `app/app.js` `backSheet()`, asserted in `preflight()` |
 | **No `background-color` anywhere on a `.sheet`.** Browsers omit fills unless the viewer ticks "Background graphics", which is off by default. Every line is a border or a text colour | `app/index.html`, linted in `preflight()` |
 | **A code starts a packet**, and every page after it belongs to that student until the next code. Nothing else is inferred | `tools/lib/packets.mjs` `buildPackets()` |

@@ -39,6 +39,12 @@ loop runs for a term on placeholder IDs, filed by hand.
 
 ## Settled
 
+- **19 Sep 2026 — the back is optional, per print run.** A checkbox next to Step 2 turns the
+  sheet into a one-page cover (an exam cover, occasionally) — no back is built, none is
+  required, and the print-dialog instruction swaps to single-sided, because leaving duplex
+  on with one page per student would weld two students onto one physical sheet. A run
+  setting, not a saved one: `state.twoSided`, not a document field. Reasoning:
+  [decisions.md §30](decisions.md).
 - **18 Sep 2026 — the class bar is live at any class count, and is where a class gets added.**
   §19's "a strip with one tab on it is furniture" stopped holding once the bar became the
   only place to add a class, not only switch between them — found from the first real deploy,

@@ -12,8 +12,14 @@
      class, a year file, or nothing at all, which is drop-in print. One field
      rather than a flag per destination, because two flags can disagree, and this
      one decides whether a file is written into a class or only printed from. */
+  /* twoSided defaults true — the usual job is the duplex rubric sheet. Off makes
+     it a one-page cover sheet (an exam cover, occasionally): no back is built, no
+     back is required, and the front stops promising scoring that will not exist
+     (decisions.md §30). A run choice, not a document — it is not in PREF_DEFAULTS
+     and resets to the usual case on reload rather than surprising the next print
+     with the last one's setting. */
   var state = { roster: null, planbook: null, classId: null, doc: null,
-                pick: null, front: '', back: '', addingClass: false };
+                pick: null, front: '', back: '', addingClass: false, twoSided: true };
 
   var $ = function (id) { return document.getElementById(id); };
 
@@ -1917,12 +1923,12 @@
     var box = $('sheets');
     box.innerHTML = '';
     updatePayloadSize();
-    if (!state.roster || !state.front || !state.back) return preflight();
+    if (!state.roster || !state.front || (state.twoSided && !state.back)) return preflight();
 
     var f = fields();
     state.roster.students.forEach(function (s, i) {
       box.appendChild(frontSheet(s, i, f));
-      box.appendChild(backSheet(s, i, f));
+      if (state.twoSided) box.appendChild(backSheet(s, i, f));
     });
     preflight();
   }
@@ -1954,14 +1960,15 @@
     if (f.course) title.appendChild(text('div', 'sheet-course', f.course));
     if (f.topic) title.appendChild(text('div', 'sheet-topic', f.topic));
     title.appendChild(text('div', 'sheet-due',
-      'Due ' + f.due + ' · ' + f.points + ' points · scoring on the back'));
+      'Due ' + f.due + ' · ' + f.points + ' points' +
+      (state.twoSided ? ' · scoring on the back' : '')));
     sheet.appendChild(title);
 
     var body = el('div', 'sheet-body');
     body.innerHTML = state.front;
     sheet.appendChild(body);
 
-    sheet.appendChild(foot(s, f, 1));
+    sheet.appendChild(foot(s, f, 1, state.twoSided ? 2 : 1));
     return sheet;
   }
 
@@ -1982,14 +1989,14 @@
     body.innerHTML = state.back;
     sheet.appendChild(body);
 
-    sheet.appendChild(foot(s, f, 2));
+    sheet.appendChild(foot(s, f, 2, 2));
     return sheet;
   }
 
-  function foot(s, f, side) {
+  function foot(s, f, side, total) {
     var box = el('div', 'sheet-foot');
     box.appendChild(text('span', '',
-      s.first + ' ' + s.last + ' · ' + (f.topic || f.course) + ' · side ' + side + ' of 2'));
+      s.first + ' ' + s.last + ' · ' + (f.topic || f.course) + ' · side ' + side + ' of ' + total));
     box.appendChild(text('span', 'sheet-foot-code', f.run + ' · ' + s.id));
     return box;
   }
@@ -2003,22 +2010,27 @@
 
     if (!state.roster) out.push(['wait', 'Waiting for a roster.']);
     if (!state.front) out.push(['wait', 'The front is empty — paste the assignment.']);
-    if (!state.back) out.push(['wait', 'The back is empty — paste the scoring.']);
+    if (state.twoSided && !state.back) out.push(['wait', 'The back is empty — paste the scoring.']);
 
     if (sheets.length) {
       var students = state.roster.students.length;
+      var perStudent = state.twoSided ? 2 : 1;
 
-      out.push(sheets.length === students * 2
-        ? ['ok', students + ' students · ' + sheets.length + ' pages · 2 per student']
-        : ['bad', 'Expected ' + students * 2 + ' pages, built ' + sheets.length + '.']);
+      out.push(sheets.length === students * perStudent
+        ? ['ok', students + ' students · ' + sheets.length + ' pages · ' + perStudent + ' per student']
+        : ['bad', 'Expected ' + students * perStudent + ' pages, built ' + sheets.length + '.']);
 
       var ordered = sheets.every(function (sheet, i) {
-        return sheet.dataset.student === String(Math.floor(i / 2)) &&
-          sheet.dataset.side === (i % 2 ? 'back' : 'front');
+        return state.twoSided
+          ? sheet.dataset.student === String(Math.floor(i / 2)) &&
+            sheet.dataset.side === (i % 2 ? 'back' : 'front')
+          : sheet.dataset.student === String(i) && sheet.dataset.side === 'front';
       });
       out.push(ordered
-        ? ['ok', 'Fronts and backs alternate in roster order.']
-        : ['bad', 'Sides are out of order — duplex would shear.']);
+        ? ['ok', state.twoSided ? 'Fronts and backs alternate in roster order.'
+                                 : 'Sheets are in roster order.']
+        : ['bad', state.twoSided ? 'Sides are out of order — duplex would shear.'
+                                  : 'Sheets are out of order.']);
 
       var overflowing = sheets.filter(function (sheet) {
         var body = sheet.querySelector('.sheet-body');
@@ -2037,7 +2049,9 @@
       var codeCounts = sheets.map(function (sheet) {
         return sheet.querySelectorAll('svg[data-qr]').length;
       });
-      var codesRight = codeCounts.every(function (n, i) { return n === (i % 2 ? 0 : 1); });
+      var codesRight = state.twoSided
+        ? codeCounts.every(function (n, i) { return n === (i % 2 ? 0 : 1); })
+        : codeCounts.every(function (n) { return n === 1; });
       out.push(codesRight
         ? ['ok', 'One routing code per sheet, on the front only.']
         : ['bad', 'A back carries a routing code — that would start a phantom packet.']);
@@ -2175,6 +2189,36 @@
   ['fCourse', 'fTopic', 'fDue', 'fPoints', 'fHanded', 'fRun'].forEach(function (id) {
     $(id).addEventListener('input', render);
   });
+
+  /* Dims the back paste box rather than clearing it, so unticking and re-ticking
+     mid-session never loses a scoring paste already made (decisions.md §30).
+
+     THE PRINT-DIALOG SETTING MUST FLIP WITH IT. One .sheet per student off means
+     the batch is one PDF page per student, not two — printed double-sided anyway,
+     student N's cover would land on the front of a physical sheet and student
+     N+1's cover on its back, welding two students onto one piece of paper. So the
+     instruction here is the one thing standing between this toggle and a stack
+     that silently mixes two rosters' worth of names. */
+  function updateTwoSidedUi() {
+    $('backLabel').textContent = 'Back · the scoring' +
+      (state.twoSided ? '' : ' (not printed this run)');
+    $('pasteBack').classList.toggle('side-off', !state.twoSided);
+    $('printDialogHint').innerHTML = state.twoSided
+      ? 'Print <strong>double-sided, flipped on the long edge</strong> — on the short edge ' +
+        'every scoring side comes out upside down. Scale <strong>100%</strong>, not ' +
+        'fit-to-page. Margins <strong>none</strong>. Headers and footers <strong>off</strong>.'
+      : 'Print <strong>single-sided</strong> — with the back off, each student is one page, ' +
+        'and double-sided would print one student’s cover on the back of the one before ' +
+        'them. Scale <strong>100%</strong>, not fit-to-page. Margins <strong>none</strong>. ' +
+        'Headers and footers <strong>off</strong>.';
+  }
+  $('fTwoSided').addEventListener('change', function () {
+    state.twoSided = $('fTwoSided').checked;
+    updateTwoSidedUi();
+    render();
+  });
+  updateTwoSidedUi();
+
   $('recheck').addEventListener('click', render);
   $('printBtn').addEventListener('click', function () { window.print(); });
 

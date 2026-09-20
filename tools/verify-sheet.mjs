@@ -3,10 +3,15 @@
    The browser's pre-flight checks the DOM. This checks the actual rendered output,
    which is the thing the copier will see:
 
-     · exactly 2 pages per student, so duplex can never shear
+     · 2 pages per student (or 1, for a cover-sheet run with the back off —
+       decisions.md §30), so duplex can never shear or weld two students together
      · every FRONT carries exactly one code, and it matches a roster student
      · every BACK carries none — a second code would start a phantom packet
      · every code lands inside the rectangle the splitter crops to
+
+   One vs two per student is detected from the page count rather than a flag: a
+   count that matches the roster exactly is a cover-sheet run, and anything else
+   is checked against the usual duplex expectation. */
 
    That last one is what lets you trust the splitter before you own a scan.
 
@@ -39,7 +44,16 @@ console.log(`\nSheet verification\n${'-'.repeat(64)}`);
 console.log(`${pdfPath}\n`);
 
 const doc = await openPdf(pdfPath);
-const expectedPages = roster.students.length * 2;
+
+/* A count that lands exactly on the roster size can only be a cover-sheet run —
+   duplex always doubles it, so there is no ambiguity to guess wrong on. Anything
+   else is checked against the usual two-per-student expectation, which is also
+   what makes a genuinely short duplex run (a dropped page) fail loudly instead
+   of being read as intentional. */
+const singleSided = doc.numPages === roster.students.length;
+const perStudent = singleSided ? 1 : 2;
+const expectedPages = roster.students.length * perStudent;
+if (singleSided) console.log('Detected a cover-sheet run — one page per student, no back.\n');
 
 check(doc.numPages === expectedPages,
   `${expectedPages} pages for ${roster.students.length} students`,
@@ -54,7 +68,7 @@ const pages = [];
 for (let n = 1; n <= doc.numPages; n++) {
   const cropped = await renderPage(doc, n, { dpi: DPI, crop: CROP });
   const found = readCode(cropped);
-  pages.push({ n, side: n % 2 ? 'front' : 'back', found });
+  pages.push({ n, side: singleSided || n % 2 ? 'front' : 'back', found });
 }
 
 const fronts = pages.filter((p) => p.side === 'front');

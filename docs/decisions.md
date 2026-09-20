@@ -847,6 +847,58 @@ level.
 
 ---
 
+## 30 · The back is optional, per run — never per student
+
+Decided 19 Sep 2026, from a real use the sheet was not built for: an exam cover. The name,
+routing code and prompt area are useful on their own — a personalised cover page — and
+there is nothing to score, so a rubric back is dead weight on that page rather than a second
+half of the document.
+
+**A checkbox on the run, not a document field.** `state.twoSided` lives beside `front` and
+`back` in memory only — it is not in `PREF_DEFAULTS` and it is not on the roster or the year
+document. §6's occasional cases (a printed cover for an exam) do not all deserve a saved
+setting, and this one resets to the usual duplex case on reload rather than surprising the
+next ordinary print run with whatever the last one left behind.
+
+**Why this cannot be a per-student choice.** The whole class prints as one PDF, and pages
+alternate in whatever pattern the print dialog is told to expect. If some students had a
+back and others did not, duplex pagination could not stay consistent — the physical sheet
+boundary would drift partway through the stack, landing one student's cover on the back of
+another's. So it is one setting for the run, exactly like the QR payload budget and the
+routing code position: a property of the *sheet*, not of the *student*.
+
+**The print-dialog instruction has to flip with it, and this is the sharp edge.** With the
+back on, the batch is two PDF pages per student and duplex printing is what turns that back
+into one physical sheet. With the back off, the batch is *one* PDF page per student — and if
+duplex printing is left on anyway, the print driver pairs consecutive PDF pages onto one
+physical sheet regardless of whose they are: student N's cover prints on the front, student
+N+1's cover prints on the back of the same piece of paper. Two students welded onto one
+sheet, and nothing about the PDF itself would look wrong — it would only be wrong on paper.
+That is exactly the invisible failure this project exists to prevent, so the "In the print
+dialog" card is not static copy any more; it swaps to say **single-sided** the moment the
+back is unticked, named as the reason (`app.js` `updateTwoSidedUi()`). There is no
+pre-flight check for the print dialog's own setting — the browser gives the page nothing to
+read that setting back from — so the instruction carries the whole weight of this one.
+
+**Every other check divides by the same setting rather than assuming 2.** Page count,
+side ordering, and the one-code-per-sheet count in `preflight()` all read `state.twoSided`
+now instead of a hardcoded 2, so a cover-sheet run gets a preflight that is actually testing
+the pages it built, not the pages a duplex run would have built. `verify-sheet.mjs` detects
+the same thing from the printed PDF itself: a page count that lands exactly on the roster
+size can only be a cover-sheet run, because duplex always doubles it — no flag needed, and a
+genuinely short duplex run (a dropped page) still fails loudly rather than being read as
+intentional.
+
+**Left untouched: the splitter.** `tools/lib/packets.mjs`'s even-page-count check is about
+the *scan*, not the *sheet* — a duplex scanner produces two images per physical page it
+feeds, printed side or blank, which is the same reasoning as "blank backs are kept and
+filed" above. A cover sheet that went out single-sided still has two faces on the paper, and
+a duplex scan of the collected stack still reads both. Nothing about that check assumed the
+rubric sheet itself was two-sided; it assumed the *scanner* was, and this change does not
+touch the scanner.
+
+---
+
 ## Deliberately not built
 
 | | note |

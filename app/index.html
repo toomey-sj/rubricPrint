@@ -198,6 +198,9 @@ a { color: #4a5fbb; }
 }
 .paste-target:focus { outline: 2px solid #5b6fcc; outline-offset: 2px; border-style: solid; }
 .paste-target.filled { border-style: solid; border-color: #e0e4ea; }
+/* Back paste box when Print a back is unticked — kept, not cleared, so re-ticking
+   does not lose a scoring paste somebody already made (decisions.md §30). */
+.paste-target.side-off { opacity: 0.45; pointer-events: none; }
 .paste-target:empty::before { content: attr(data-placeholder); color: #a0aab8; }
 .paste-target h1, .paste-target h2, .paste-target h3 {
   font-size: 11px; font-weight: 700; letter-spacing: 0.4px; text-transform: uppercase;
@@ -361,6 +364,13 @@ a { color: #4a5fbb; }
           <p>Copy each half out of your Google Doc and paste it into its side. Headings, bold, lists and tables come across; Doc fonts and colours do not.</p>
         </div>
       </div>
+      <!-- Off, this is a one-page cover sheet — the routing code and the front paste
+           print, and there is nothing to score. Occasional use (an exam cover), so it
+           is a checkbox for this run rather than anything saved (decisions.md §30). -->
+      <label style="display:flex; align-items:center; gap:8px; font-size:12px; font-weight:600; cursor:pointer; margin-bottom:12px;">
+        <input type="checkbox" id="fTwoSided" checked>
+        Print a back (double-sided)
+      </label>
     </div>
     <div class="panel-body" style="display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:12px;">
       <div style="display:flex; flex-direction:column; gap:7px;">
@@ -369,7 +379,7 @@ a { color: #4a5fbb; }
              data-placeholder="Paste the assignment here."></div>
       </div>
       <div style="display:flex; flex-direction:column; gap:7px;">
-        <div class="section-label">Back · the scoring</div>
+        <div class="section-label" id="backLabel">Back · the scoring</div>
         <div class="paste-target" id="pasteBack" contenteditable="true" role="textbox" aria-label="Paste the scoring"
              data-placeholder="Paste the scoring here."></div>
       </div>
@@ -436,11 +446,7 @@ a { color: #4a5fbb; }
       <div class="preflight" id="preflight"></div>
       <div class="card">
         <div class="section-label">In the print dialog</div>
-        <div style="font-size:12px; line-height:1.55; margin-top:6px;">
-          Print <strong>double-sided, flipped on the long edge</strong> — on the short edge every
-          scoring side comes out upside down. Scale <strong>100%</strong>, not fit-to-page.
-          Margins <strong>none</strong>. Headers and footers <strong>off</strong>.
-        </div>
+        <div style="font-size:12px; line-height:1.55; margin-top:6px;" id="printDialogHint"></div>
       </div>
     </div>
   </div>
